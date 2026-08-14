@@ -1,12 +1,12 @@
 name: Build & Release
 
 on:
-  # Manual build: pick a version tag (empty = "manual") and optional
+  # Manual build: pick a version tag (empty = "dev") and optional
   # Blocky/VictoriaMetrics versions to bake into the image.
   workflow_dispatch:
     inputs:
       version:
-        description: 'Image version tag (e.g. v1.0.0). Empty = "manual"'
+        description: 'Image version tag (e.g. v1.0.0). Empty = "dev"'
         required: false
         type: string
         default: ''
@@ -36,26 +36,13 @@ env:
 
 jobs:
   docker-build:
-    name: Build Docker (${{ matrix.arch.platform }})
-    runs-on: ${{ matrix.arch.os }}
+    name: Build & Push Docker Image
+    runs-on: ubuntu-latest
     permissions:
       contents: read
       packages: write
-    strategy:
-      fail-fast: false
-      matrix:
-        arch:
-          - platform: linux/amd64
-            os: ubuntu-latest
-          - platform: linux/arm64
-            os: ubuntu-24.04-arm
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
-
-      - name: Prepare
-        run: |
-          platform=${{ matrix.arch.platform }}
-          echo "PLATFORM_PAIR=${platform//\//-}" >> "$GITHUB_ENV"
 
       - name: Set up QEMU
         uses: docker/setup-qemu-action@96fe6ef7f33517b61c61be40b68a1882f3264fb8 # v4
@@ -70,62 +57,9 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Build and push by digest
-        id: build
-        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7
-        with:
-          context: .
-          platforms: ${{ matrix.arch.platform }}
-          build-args: |
-            BLOCKY_VERSION=${{ inputs.blocky_version || 'v0.34.0' }}
-            VM_VERSION=${{ inputs.vm_version || 'v1.113.0' }}
-          tags: ${{ env.IMAGE }}
-          outputs: type=image,push-by-digest=true,name-canonical=true,push=true
-          cache-from: type=gha,scope=build-${{ env.PLATFORM_PAIR }}
-          cache-to: type=gha,mode=min,scope=build-${{ env.PLATFORM_PAIR }}
-
-      - name: Export digest
-        run: |
-          mkdir -p "${{ runner.temp }}/digests"
-          digest="${{ steps.build.outputs.digest }}"
-          touch "${{ runner.temp }}/digests/${digest#sha256:}"
-
-      - name: Upload digest
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
-        with:
-          name: digests-${{ env.PLATFORM_PAIR }}
-          path: "${{ runner.temp }}/digests/*"
-          if-no-files-found: error
-          retention-days: 1
-
-  docker-merge:
-    name: Merge & Push Manifest
-    runs-on: ubuntu-latest
-    needs: docker-build
-    permissions:
-      contents: read
-      packages: write
-    steps:
-      - name: Download digests
-        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
-        with:
-          path: "${{ runner.temp }}/digests"
-          pattern: digests-*
-          merge-multiple: true
-
-      - name: Login to GitHub Container Registry
-        uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@bb05f3f5519dd87d3ba754cc423b652a5edd6d2c # v4
-
       # Decide the tag set:
       #   - tag push  → the tag itself (v1.2.3), plus `latest` for stable releases
-      #   - manual    → the version input, or `manual` when left empty
+      #   - manual    → the version input, or `dev` when left empty
       - name: Prepare tags
         id: tags
         run: |
@@ -139,7 +73,7 @@ jobs:
             fi
           else
             VERSION="${{ inputs.version }}"
-            [ -z "$VERSION" ] && VERSION="manual"
+            [ -z "$VERSION" ] && VERSION="dev"
             echo "tag=${VERSION}" >> "$GITHUB_OUTPUT"
             echo "is_stable=false" >> "$GITHUB_OUTPUT"
           fi
@@ -155,17 +89,18 @@ jobs:
             type=raw,value=${{ steps.tags.outputs.tag }}
             type=raw,value=latest,enable=${{ steps.tags.outputs.is_stable }}
 
-      - name: Create manifest list and push
-        working-directory: "${{ runner.temp }}/digests"
-        run: |
-          n=3
-          for i in $(seq 1 $n); do
-            docker buildx imagetools create $(jq -cr '.tags | map("-t " + .) | join(" ")' <<< "$DOCKER_METADATA_OUTPUT_JSON") \
-              $(printf '${{ env.IMAGE }}@sha256:%s ' *) && break
-
-            [ "$i" = "$n" ] && exit 1
-            sleep 10
-          done
+      - name: Build and push
+        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7
+        with:
+          context: .
+          platforms: linux/amd64,linux/arm64
+          build-args: |
+            BLOCKY_VERSION=${{ inputs.blocky_version || 'v0.34.0' }}
+            VM_VERSION=${{ inputs.vm_version || 'v1.113.0' }}
+          tags: ${{ steps.meta.outputs.tags }}
+          push: true
+          cache-from: type=gha
+          cache-to: type=gha,mode=min
 
       - name: Inspect image
         run: |
@@ -175,7 +110,7 @@ jobs:
     name: Create GitHub Release
     runs-on: ubuntu-latest
     if: startsWith(github.ref, 'refs/tags/v')
-    needs: docker-merge
+    needs: docker-build
     permissions:
       contents: write
     steps:

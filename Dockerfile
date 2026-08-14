@@ -46,21 +46,24 @@ RUN npm install --no-save --omit=dev libsql
 # -----------------------------------------------------------------------------
 # Stage 3: Build Blocky (Go DNS server)
 # -----------------------------------------------------------------------------
-FROM docker.io/library/golang:1.23-alpine AS build-blocky
+FROM docker.io/library/golang:1.26-alpine AS build-blocky
 WORKDIR /build
 
 # renovate: datasource=github-tags depName=0xERR0R/blocky
 ARG BLOCKY_VERSION=v0.34.0
 
-RUN apk add --no-cache git make && \
+# coreutils provides GNU date (busybox date lacks --iso-8601, which Blocky's
+# Makefile uses for BUILD_TIME). GO_SKIP_GENERATE skips mockery/go generate
+# (generated files are committed upstream).
+RUN apk add --no-cache git make coreutils && \
     git clone --depth 1 --branch ${BLOCKY_VERSION} https://github.com/0xERR0R/blocky.git && \
     cd blocky && \
-    make build
+    make build GO_SKIP_GENERATE=1
 
 # -----------------------------------------------------------------------------
 # Stage 4: Build VictoriaMetrics (Go time-series database)
 # -----------------------------------------------------------------------------
-FROM docker.io/library/golang:1.23-alpine AS build-victoriametrics
+FROM docker.io/library/golang:1.26-alpine AS build-victoriametrics
 WORKDIR /build
 
 # renovate: datasource=github-tags depName=VictoriaMetrics/VictoriaMetrics
@@ -106,7 +109,7 @@ COPY --from=build-wg-easy /app/amneziawg-tools/src/wg-quick/linux.bash /usr/bin/
 RUN chmod +x /usr/bin/amneziawg-go /usr/bin/awg /usr/bin/awg-quick
 
 # Copy Blocky binary
-COPY --from=build-blocky /build/blocky/blocky /usr/bin/blocky
+COPY --from=build-blocky /build/blocky/bin/blocky /usr/bin/blocky
 RUN chmod +x /usr/bin/blocky
 
 # Copy VictoriaMetrics binary
