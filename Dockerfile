@@ -15,7 +15,7 @@ RUN corepack enable pnpm
 
 # Install dependencies
 COPY src/package.json src/pnpm-lock.yaml src/pnpm-workspace.yaml ./
-RUN pnpm install
+RUN --mount=type=cache,target=/root/.local/share/pnpm/store pnpm install --frozen-lockfile
 
 # Build UI
 COPY src ./
@@ -44,10 +44,16 @@ WORKDIR /app
 RUN npm install --no-save --omit=dev libsql
 
 # -----------------------------------------------------------------------------
-# Stage 3: Build Blocky (Go DNS server)
+# Stage 3: Shared Go build base (Blocky + VictoriaMetrics)
 # -----------------------------------------------------------------------------
-FROM docker.io/library/golang:1.26-alpine AS build-blocky
+FROM docker.io/library/golang:1.26-alpine@sha256:70b46548e42db77e0966aaf3619fd068734dc6c77584d526b91126504fd95816 AS build-go-base
 WORKDIR /build
+RUN apk add --no-cache git make coreutils
+
+# -----------------------------------------------------------------------------
+# Stage 4: Build Blocky (Go DNS server)
+# -----------------------------------------------------------------------------
+FROM build-go-base AS build-blocky
 
 # renovate: datasource=github-tags depName=0xERR0R/blocky
 ARG BLOCKY_VERSION=v0.34.0
@@ -55,76 +61,76 @@ ARG BLOCKY_VERSION=v0.34.0
 # coreutils provides GNU date (busybox date lacks --iso-8601, which Blocky's
 # Makefile uses for BUILD_TIME). GO_SKIP_GENERATE skips mockery/go generate
 # (generated files are committed upstream).
-RUN apk add --no-cache git make coreutils && \
+RUN --mount=type=cache,target=/root/.cache/go-build \
+    --mount=type=cache,target=/go/pkg/mod \
     git clone --depth 1 --branch ${BLOCKY_VERSION} https://github.com/0xERR0R/blocky.git && \
     cd blocky && \
     make build GO_SKIP_GENERATE=1
 
 # -----------------------------------------------------------------------------
-# Stage 4: Build VictoriaMetrics (Go time-series database)
+# Stage 5: Build VictoriaMetrics (Go time-series database)
 # -----------------------------------------------------------------------------
-FROM docker.io/library/golang:1.26-alpine AS build-victoriametrics
-WORKDIR /build
+FROM build-go-base AS build-victoriametrics
 
 # renovate: datasource=github-tags depName=VictoriaMetrics/VictoriaMetrics
 ARG VM_VERSION=v1.113.0
 
 # The -pure target builds with CGO_ENABLED=0 (no C compiler needed) and
 # produces a statically linked binary at bin/victoria-metrics-pure.
-RUN apk add --no-cache git make && \
+RUN --mount=type=cache,target=/root/.cache/go-build \
+    --mount=type=cache,target=/go/pkg/mod \
     git clone --depth 1 --branch ${VM_VERSION} https://github.com/VictoriaMetrics/VictoriaMetrics.git && \
     cd VictoriaMetrics && \
     make victoria-metrics-pure
 
 # -----------------------------------------------------------------------------
-# Stage 5: Final runtime image
+# Stage 6: Final runtime image
 # -----------------------------------------------------------------------------
 FROM docker.io/library/node:krypton-alpine@sha256:d32cdf619f63fe0471182d08996dd516c6275bb5fd31ae06e55a570bd9e1ad43 AS runtime
 
 # Install s6-overlay for process management
 # renovate: datasource=github-tags depName=just-containers/s6-overlay
 ARG S6_OVERLAY_VERSION=v3.2.0.0
-ADD https://github.com/just-containers/s6-overlay/releases/download/${S6_OVERLAY_VERSION}/s6-overlay-noarch.tar.xz /tmp/
-ADD https://github.com/just-containers/s6-overlay/releases/download/${S6_OVERLAY_VERSION}/s6-overlay-x86_64.tar.xz /tmp/
-RUN tar -C / -Jxpf /tmp/s6-overlay-noarch.tar.xz && \
-    tar -C / -Jxpf /tmp/s6-overlay-x86_64.tar.xz && \
+ARG TARGETARCH
+RUN case "${TARGETARCH}" in \
+        amd64) S6_ARCH="x86_64"; S6_CHECKSUM="ad982a801bd72757c7b1b53539a146cf715e640b4d8f0a6a671a3d1b560fe1e2" ;; \
+        arm64) S6_ARCH="aarch64"; S6_CHECKSUM="868973e98210257bba725ff5b17aa092008c9a8e5174499e38ba611a8fc7e473" ;; \
+        *) echo "Unsupported TARGETARCH: ${TARGETARCH}" >&2; exit 1 ;; \
+    esac && \
+    wget -q -O /tmp/s6-overlay-noarch.tar.xz "https://github.com/just-containers/s6-overlay/releases/download/${S6_OVERLAY_VERSION}/s6-overlay-noarch.tar.xz" && \
+    echo "4b0c0907e6762814c31850e0e6c6762c385571d4656eb8725852b0b1586713b6  /tmp/s6-overlay-noarch.tar.xz" | sha256sum -c - && \
+    wget -q -O /tmp/s6-overlay-arch.tar.xz "https://github.com/just-containers/s6-overlay/releases/download/${S6_OVERLAY_VERSION}/s6-overlay-${S6_ARCH}.tar.xz" && \
+    echo "${S6_CHECKSUM}  /tmp/s6-overlay-arch.tar.xz" | sha256sum -c - && \
+    tar -C / -Jxpf /tmp/s6-overlay-noarch.tar.xz && \
+    tar -C / -Jxpf /tmp/s6-overlay-arch.tar.xz && \
     rm /tmp/s6-overlay-*.tar.xz
 
 WORKDIR /app
 
-# Health check for WireGuard interface
-HEALTHCHECK --interval=1m --timeout=5s --retries=3 CMD /usr/bin/timeout 5s /bin/sh -c "/usr/bin/wg show | /bin/grep -q interface || exit 1"
+# Health check for WireGuard interface (toolchain-agnostic: works for both
+# amneziawg and stock wireguard interfaces)
+HEALTHCHECK --interval=1m --timeout=5s --retries=3 CMD /usr/bin/timeout 5s /bin/sh -c "ip link show ${WG_INTERFACE:-wg0} >/dev/null 2>&1 || exit 1"
 
 # Copy wg-easy build artifacts
 COPY --from=build-wg-easy /app/.output /app
 COPY --from=build-wg-easy /app/server/database/migrations /app/server/database/migrations
 COPY --from=build-libsql /app/node_modules /app/server/node_modules
 
-# Copy CLI
+# Copy CLI and binaries
 COPY --from=build-wg-easy /app/cli/cli.sh /usr/local/bin/cli
-RUN chmod +x /usr/local/bin/cli
-
-# Copy amneziawg binaries
 COPY --from=build-wg-easy /app/amneziawg-go/amneziawg-go /usr/bin/amneziawg-go
 COPY --from=build-wg-easy /app/amneziawg-tools/src/wg /usr/bin/awg
 COPY --from=build-wg-easy /app/amneziawg-tools/src/wg-quick/linux.bash /usr/bin/awg-quick
-RUN chmod +x /usr/bin/amneziawg-go /usr/bin/awg /usr/bin/awg-quick
-
-# Copy Blocky binary
 COPY --from=build-blocky /build/blocky/bin/blocky /usr/bin/blocky
-RUN chmod +x /usr/bin/blocky
-
-# Copy VictoriaMetrics binary
 COPY --from=build-victoriametrics /build/VictoriaMetrics/bin/victoria-metrics-pure /usr/bin/victoria-metrics
-RUN chmod +x /usr/bin/victoria-metrics
+RUN chmod +x /usr/local/bin/cli /usr/bin/amneziawg-go /usr/bin/awg /usr/bin/awg-quick /usr/bin/blocky /usr/bin/victoria-metrics
 
 # Install Linux packages
 RUN apk add --no-cache \
-    dpkg \
     dumb-init \
     iptables \
     ip6tables \
-    nftables \
+    iproute2 \
     kmod \
     iptables-legacy \
     wireguard-go \
@@ -139,8 +145,8 @@ RUN ln -sf /etc/wireguard /etc/amnezia/amneziawg
 # Use iptables-legacy
 RUN update-alternatives --install /usr/sbin/iptables iptables /usr/sbin/iptables-legacy 10 \
     --slave /usr/sbin/iptables-restore iptables-restore /usr/sbin/iptables-legacy-restore \
-    --slave /usr/sbin/iptables-save iptables-save /usr/sbin/iptables-legacy-save
-RUN update-alternatives --install /usr/sbin/ip6tables ip6tables /usr/sbin/ip6tables-legacy 10 \
+    --slave /usr/sbin/iptables-save iptables-save /usr/sbin/iptables-legacy-save && \
+    update-alternatives --install /usr/sbin/ip6tables ip6tables /usr/sbin/ip6tables-legacy 10 \
     --slave /usr/sbin/ip6tables-restore ip6tables-restore /usr/sbin/ip6tables-legacy-restore \
     --slave /usr/sbin/ip6tables-save ip6tables-save /usr/sbin/ip6tables-legacy-save
 
