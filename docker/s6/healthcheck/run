@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/command/with-contenv sh
 # Health check script - runs periodically to verify all services
 while true; do
     # Check wg-easy (port 51821)

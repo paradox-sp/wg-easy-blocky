@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/command/with-contenv sh
 exec victoria-metrics \
     -httpListenAddr=${VM_HTTP_LISTEN_ADDR:-:8428} \
     -retentionPeriod=${VM_RETENTION_PERIOD:-30d} \
