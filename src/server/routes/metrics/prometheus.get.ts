@@ -44,7 +44,7 @@ async function getPrometheusResponse() {
     );
     // TODO: if latestHandshakeAt is null this would result in client showing as online?
     wireguardLatestHandshakeSeconds.push(
-      `wireguard_latest_handshake_seconds{${id}} ${client.latestHandshakeAt ? (Date.now() - client.latestHandshakeAt.getTime()) / 1000 : 0}`
+      `wireguard_latest_handshake_seconds{${id}} ${client.latestHandshakeAt ? Math.floor(client.latestHandshakeAt.getTime() / 1000) : 0}`
     );
   }
 
