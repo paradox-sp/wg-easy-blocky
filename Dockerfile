@@ -69,10 +69,12 @@ WORKDIR /build
 # renovate: datasource=github-tags depName=VictoriaMetrics/VictoriaMetrics
 ARG VM_VERSION=v1.113.0
 
+# The -pure target builds with CGO_ENABLED=0 (no C compiler needed) and
+# produces a statically linked binary at bin/victoria-metrics-pure.
 RUN apk add --no-cache git make && \
     git clone --depth 1 --branch ${VM_VERSION} https://github.com/VictoriaMetrics/VictoriaMetrics.git && \
     cd VictoriaMetrics && \
-    make victoria-metrics
+    make victoria-metrics-pure
 
 # -----------------------------------------------------------------------------
 # Stage 5: Final runtime image
@@ -113,7 +115,7 @@ COPY --from=build-blocky /build/blocky/bin/blocky /usr/bin/blocky
 RUN chmod +x /usr/bin/blocky
 
 # Copy VictoriaMetrics binary
-COPY --from=build-victoriametrics /build/VictoriaMetrics/bin/victoria-metrics-prod /usr/bin/victoria-metrics
+COPY --from=build-victoriametrics /build/VictoriaMetrics/bin/victoria-metrics-pure /usr/bin/victoria-metrics
 RUN chmod +x /usr/bin/victoria-metrics
 
 # Install Linux packages
