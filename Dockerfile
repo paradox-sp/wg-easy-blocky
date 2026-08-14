@@ -142,13 +142,14 @@ RUN apk add --no-cache \
 RUN mkdir -p /etc/amnezia
 RUN ln -sf /etc/wireguard /etc/amnezia/amneziawg
 
-# Use iptables-legacy
-RUN update-alternatives --install /usr/sbin/iptables iptables /usr/sbin/iptables-legacy 10 \
-    --slave /usr/sbin/iptables-restore iptables-restore /usr/sbin/iptables-legacy-restore \
-    --slave /usr/sbin/iptables-save iptables-save /usr/sbin/iptables-legacy-save && \
-    update-alternatives --install /usr/sbin/ip6tables ip6tables /usr/sbin/ip6tables-legacy 10 \
-    --slave /usr/sbin/ip6tables-restore ip6tables-restore /usr/sbin/ip6tables-legacy-restore \
-    --slave /usr/sbin/ip6tables-save ip6tables-save /usr/sbin/ip6tables-legacy-save
+# Use iptables-legacy (symlinks instead of update-alternatives to avoid the
+# dpkg dependency; Alpine's iptables-legacy package provides the -legacy binaries)
+RUN ln -sf /usr/sbin/iptables-legacy /usr/sbin/iptables && \
+    ln -sf /usr/sbin/iptables-legacy-restore /usr/sbin/iptables-restore && \
+    ln -sf /usr/sbin/iptables-legacy-save /usr/sbin/iptables-save && \
+    ln -sf /usr/sbin/ip6tables-legacy /usr/sbin/ip6tables && \
+    ln -sf /usr/sbin/ip6tables-legacy-restore /usr/sbin/ip6tables-restore && \
+    ln -sf /usr/sbin/ip6tables-legacy-save /usr/sbin/ip6tables-save
 
 # Create directories for Blocky, VictoriaMetrics, and SQLite
 RUN mkdir -p /etc/blocky /data/blocky /data/victoriametrics /etc/wireguard /etc/victoriametrics
