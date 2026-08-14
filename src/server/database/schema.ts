@@ -1,4 +1,5 @@
 // ! Do not use Path Aliases in this or any of these files
+export * from './repositories/blockyConfig/schema';
 export * from './repositories/client/schema';
 export * from './repositories/general/schema';
 export * from './repositories/hooks/schema';

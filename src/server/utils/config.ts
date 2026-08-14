@@ -90,6 +90,38 @@ export const WG_INITIAL_ENV = {
     : undefined,
 };
 
+export const BLOCKY_ENV = {
+  /** Whether Blocky integration is enabled */
+  ENABLED: process.env.BLOCKY_ENABLED !== 'false',
+  /** Host Blocky's HTTP API is listening on */
+  HOST: process.env.BLOCKY_HOST ?? '127.0.0.1',
+  /** Path to the Blocky configuration file */
+  CONFIG: process.env.BLOCKY_CONFIG ?? '/etc/blocky/config.yml',
+  /** Directory where Blocky writes its query log files (CSV) */
+  LOG_DIR: process.env.BLOCKY_LOG_DIR ?? '/data/blocky/logs',
+  /** Port Blocky's HTTP API / metrics are listening on */
+  HTTP_PORT: process.env.BLOCKY_HTTP_PORT
+    ? Number.parseInt(process.env.BLOCKY_HTTP_PORT, 10)
+    : 4000,
+};
+
+export const VICTORIA_METRICS_ENV = {
+  /** Whether VictoriaMetrics integration is enabled */
+  ENABLED: process.env.VM_ENABLED !== 'false',
+  /** Base URL of the VictoriaMetrics HTTP API */
+  URL: process.env.VM_URL ?? 'http://127.0.0.1:8428',
+  /** Base URL of the VMUI web interface */
+  VMUI_URL: process.env.VMUI_URL ?? 'http://127.0.0.1:8428/vmui',
+  /** Data directory for time series storage */
+  DATA_DIR: process.env.VM_DATA_DIR ?? '/data/victoriametrics',
+  /** Retention period for stored metrics */
+  RETENTION_PERIOD: process.env.VM_RETENTION_PERIOD ?? '30d',
+  /** HTTP listen address (VMUI is served here) */
+  HTTP_LISTEN_ADDR: process.env.VM_HTTP_LISTEN_ADDR ?? ':8428',
+  /** Bearer token for scraping the wg-easy /metrics endpoint (must match the wg-easy metrics password when one is set) */
+  METRICS_TOKEN: process.env.VM_METRICS_TOKEN,
+};
+
 function assertEnv<T extends string>(env: T) {
   const val = process.env[env];
 
