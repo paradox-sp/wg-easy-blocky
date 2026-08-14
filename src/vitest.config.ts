@@ -17,6 +17,18 @@ export default defineConfig({
           environment: 'node',
         },
       },
+      {
+        resolve: {
+          alias: {
+            '#server': fileURLToPath(new URL('./server', import.meta.url)),
+          },
+        },
+        test: {
+          name: 'integration',
+          include: ['test/integration/*.{test,spec}.ts'],
+          environment: 'node',
+        },
+      },
     ],
     coverage: {
       enabled: true,
