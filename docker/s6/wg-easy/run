@@ -1,6 +1,7 @@
 #!/bin/sh
+cd /app
 if [ "${WG_EASY_DEV:-false}" = "true" ]; then
-  cd /app && exec node --run dev
+  exec node --run dev
 else
   exec node server/index.mjs
 fi
