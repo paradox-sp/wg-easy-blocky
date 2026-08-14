@@ -3,7 +3,7 @@ import { stringifyIp } from 'ip-bigint';
 
 import { removeNewlines, iptablesTemplate } from '#server/utils/template';
 import { exec } from '#server/utils/cmd';
-import { WG_ENV } from '#server/utils/config';
+import { BLOCKY_ENV, WG_ENV } from '#server/utils/config';
 import type { ClientType } from '#db/repositories/client/types';
 import type { InterfaceType } from '#db/repositories/interface/types';
 import type { UserConfigType } from '#db/repositories/userConfig/types';
@@ -123,7 +123,17 @@ PostDown = ${iptablesTemplate(hooks.postDown, wgInterface)}`;
       client.postDown ? `PostDown = ${removeNewlines(client.postDown)}` : null,
     ];
 
-    const dnsServers = client.dns ?? userConfig.defaultDns;
+    // When Blocky is enabled it runs in the same container and listens on
+    // 0.0.0.0:53, so clients use the WireGuard server's tunnel IP as their DNS
+    // server (queries travel through the tunnel to the container). Per-client
+    // DNS overrides are ignored while Blocky is enabled to guarantee ad
+    // blocking for all clients.
+    const cidr4 = parseCidr(wgInterface.ipv4Cidr);
+    const blockyDnsServer = BLOCKY_ENV.ENABLED
+      ? [stringifyIp({ number: cidr4.start + 1n, version: 4 })]
+      : null;
+
+    const dnsServers = blockyDnsServer ?? client.dns ?? userConfig.defaultDns;
     const dnsLine =
       dnsServers.length > 0 ? `DNS = ${dnsServers.join(', ')}` : null;
 
