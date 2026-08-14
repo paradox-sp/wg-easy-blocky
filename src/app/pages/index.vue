@@ -67,34 +67,28 @@ const metricsStore = useMetricsStore();
 // TODO?: use hover card to show more detailed info without leaving the page
 // or do something like a accordion
 
-const intervalId = ref<NodeJS.Timeout | null>(null);
+const initialRefresh = clientsStore.refresh();
+let pageMounted = false;
 
-clientsStore.refresh();
-
-function startPolling() {
-  if (intervalId.value !== null) return;
-  // TODO?: replace with websocket or similar
-  intervalId.value = setInterval(() => {
-    clientsStore
-      .refresh({
+const { pause: pausePolling, resume: resumePolling } = useTimeoutPoll(
+  async () => {
+    try {
+      await clientsStore.refresh({
         updateCharts: globalStore.uiShowCharts,
-      })
-      .catch(console.error);
+      });
+    } catch (error) {
+      console.error(error);
+    }
 
     metricsStore.fetchDashboard().catch(console.error);
-  }, 5000);
-}
-
-function stopPolling() {
-  if (intervalId.value !== null) {
-    clearInterval(intervalId.value);
-    intervalId.value = null;
-  }
-}
+  },
+  5000,
+  { immediate: false }
+);
 
 function handleVisibilityChange() {
   if (document.hidden) {
-    stopPolling();
+    pausePolling();
   } else {
     // refresh immediately on return, then resume the interval
     clientsStore
@@ -103,17 +97,23 @@ function handleVisibilityChange() {
       })
       .catch(console.error);
     metricsStore.fetchDashboard().catch(console.error);
-    startPolling();
+    resumePolling();
   }
 }
 
 onMounted(() => {
-  startPolling();
+  pageMounted = true;
   document.addEventListener('visibilitychange', handleVisibilityChange);
+
+  void initialRefresh.catch(console.error).finally(() => {
+    if (pageMounted) {
+      resumePolling();
+    }
+  });
 });
 
 onUnmounted(() => {
-  stopPolling();
+  pageMounted = false;
   document.removeEventListener('visibilitychange', handleVisibilityChange);
 });
 

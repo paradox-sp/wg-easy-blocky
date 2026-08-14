@@ -38,6 +38,20 @@ services:
       - DEBUG=Server,WireGuard,Database,CMD,Firewall
       # Bearer token for scraping /metrics (must match the wg-easy metrics password if one is configured)
       - VM_METRICS_TOKEN=${VM_METRICS_TOKEN}
+    develop:
+      watch:
+        - action: sync
+          path: ./src
+          target: /app
+          initial_sync: true
+          ignore:
+            - node_modules/
+            - .nuxt/
+            - .output/
+            - coverage/
+            - package.json
+            - pnpm-lock.yaml
+            - pnpm-workspace.yaml
 
 # folders should be generated inside container
 volumes:

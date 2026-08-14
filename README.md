@@ -36,6 +36,7 @@ This fork bundles **Blocky** (ad/tracker-blocking DNS) and **VictoriaMetrics** (
 - Raw DNS query history with search/filter
 - VictoriaMetrics time-series metrics with embedded VMUI dashboards
 - Per-client DNS routed through Blocky
+- OIDC support (Google, GitHub, Authelia, Authentik, etc.)
 
 > [!NOTE]
 > To better manage documentation for this project, it has its own site here: [https://wg-easy.github.io/wg-easy/latest](https://wg-easy.github.io/wg-easy/latest)
