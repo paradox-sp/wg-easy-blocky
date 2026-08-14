@@ -1,0 +1,8 @@
+#!/bin/sh
+exec victoria-metrics \
+    -httpListenAddr=${VM_HTTP_LISTEN_ADDR:-:8428} \
+    -retentionPeriod=${VM_RETENTION_PERIOD:-30d} \
+    -storageDataPath=${VM_DATA_DIR:-/data/victoriametrics} \
+    -promscrape.config=/etc/victoriametrics/scrape.yml \
+    -search.maxPointsPerTimeseries=100000 \
+    -search.maxUniqueTimeseries=1000000

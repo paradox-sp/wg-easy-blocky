@@ -1,0 +1,72 @@
+# Blocky Configuration Template (v0.34.0 schema)
+# This file is copied to /etc/blocky/config.yml on container start.
+# The wg-easy server rewrites this file from the DB config and restarts the
+# Blocky s6 service whenever the config is saved in the UI.
+
+ports:
+  dns: 53
+  http: 4000
+
+log:
+  level: info
+  format: text
+
+# Upstream DNS servers (DoH/DoT require bootstrapDns below)
+upstreams:
+  groups:
+    default:
+      - https://dns.google/dns-query
+      - https://cloudflare-dns.com/dns-query
+
+# Bootstrap DNS used to resolve the DoH/DoT upstream hostnames
+bootstrapDns:
+  - 1.1.1.1:53
+  - 8.8.8.8:53
+
+# Blocking configuration
+blocking:
+  # Blocking mode: ZEROIP or NXDOMAIN
+  blockType: ZEROIP
+
+  # Block lists (ad/tracker/malware)
+  denylists:
+    default:
+      - https://raw.githubusercontent.com/StevenBlack/hosts/master/hosts
+
+  # Allow lists (whitelist)
+  allowlists:
+    default: []
+
+  # Client groups for different blocking policies
+  clientGroupsBlock:
+    default:
+      - default
+
+# Caching configuration
+caching:
+  minTime: 5m
+  maxTime: 30m
+  maxItemsCount: 10000
+
+# Query logging (CSV written to /data/blocky/logs)
+queryLog:
+  type: csv
+  target: /data/blocky/logs
+  logRetentionDays: 7
+
+# Prometheus metrics (served on the HTTP listener, ports.http)
+prometheus:
+  enable: true
+  path: /metrics
+
+# Client name mapping (IP -> name)
+clientLookup:
+  clients:
+    # "10.42.42.2": "phone"
+    # "10.42.42.3": "laptop"
+
+# Conditional upstream (optional)
+# conditional:
+#   mapping:
+#     "internal.example.com":
+#       - tcp://10.0.0.1:53

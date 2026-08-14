@@ -1,37 +1,151 @@
+# =============================================================================
+# wg-easy-blocky — single-container WireGuard VPN + Blocky DNS + VictoriaMetrics
+#
+# One container runs all three services via s6-overlay:
+#   - wg-easy      : Web UI + WireGuard management (port 51821)
+#   - Blocky       : DNS filtering / ad-blocking (port 53, HTTP API 4000)
+#   - VictoriaMetrics : metrics storage + VMUI (port 8428)
+#
+# Usage:
+#   cp .env.example .env   # then edit .env
+#   docker compose up -d --build
+#
+# All values below default to the same defaults baked into the Dockerfile,
+# so the file works out of the box even without a .env file.
+# =============================================================================
+
 volumes:
   etc_wireguard:
+  blocky_data:
+  victoriametrics_data:
 
 services:
-  wg-easy:
-    #environment:
-    #  Optional:
-    #  - PORT=51821
-    #  - HOST=0.0.0.0
-    #  - INSECURE=false
+  wg-easy-blocky:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: wg-easy-blocky:latest
+    container_name: wg-easy-blocky
+    restart: unless-stopped
 
-    image: ghcr.io/wg-easy/wg-easy:15
-    container_name: wg-easy
+    # -------------------------------------------------------------------------
+    # Networking
+    # -------------------------------------------------------------------------
+    # Static IPs on the internal `wg` bridge so the three in-container
+    # services can talk to each other on stable addresses.
     networks:
       wg:
         ipv4_address: 10.42.42.42
         ipv6_address: fdcc:ad94:bacf:61a3::2a
-    volumes:
-      - etc_wireguard:/etc/wireguard
-      - /lib/modules:/lib/modules:ro
+
     ports:
-      - "51820:51820/udp"
-      - "51821:51821/tcp"
-    restart: unless-stopped
+      - "${WG_PORT:-51820}:${WG_PORT:-51820}/udp"   # WireGuard VPN
+      - "${PORT:-51821}:${PORT:-51821}/tcp"         # wg-easy Web UI
+      - "53:53/udp"                                 # Blocky DNS (UDP)
+      - "53:53/tcp"                                 # Blocky DNS (TCP)
+      - "${BLOCKY_HTTP_PORT:-4000}:${BLOCKY_HTTP_PORT:-4000}/tcp" # Blocky HTTP API
+      - "8428:8428/tcp"                             # VictoriaMetrics / VMUI
+
+    # -------------------------------------------------------------------------
+    # Persistence
+    # -------------------------------------------------------------------------
+    volumes:
+      - etc_wireguard:/etc/wireguard            # WireGuard keys + configs
+      - blocky_data:/data/blocky                # Blocky CSV query logs
+      - victoriametrics_data:/data/victoriametrics # Time-series data
+      - /lib/modules:/lib/modules:ro            # Kernel modules (WireGuard)
+
+    # -------------------------------------------------------------------------
+    # Capabilities & sysctls (required for WireGuard + iptables NAT)
+    # -------------------------------------------------------------------------
     cap_add:
       - NET_ADMIN
       - SYS_MODULE
-      # - NET_RAW # ⚠️ Uncomment if using Podman
+      # - NET_RAW # Uncomment if using Podman instead of Docker
     sysctls:
       - net.ipv4.ip_forward=1
       - net.ipv4.conf.all.src_valid_mark=1
       - net.ipv6.conf.all.disable_ipv6=0
       - net.ipv6.conf.all.forwarding=1
       - net.ipv6.conf.default.forwarding=1
+
+    # -------------------------------------------------------------------------
+    # Environment
+    # -------------------------------------------------------------------------
+    environment:
+      # --- wg-easy core ------------------------------------------------------
+      # Port the Web UI listens on (must match the published port above)
+      PORT: "${PORT:-51821}"
+      # Host the UI binds to
+      HOST: "${HOST:-0.0.0.0}"
+      # Set to true to allow HTTP (no TLS) access to the UI
+      INSECURE: "${INSECURE:-false}"
+      # Set to true to disable IPv6 support
+      DISABLE_IPV6: "${DISABLE_IPV6:-false}"
+      # Set to true to skip the version check against GitHub
+      DISABLE_VERSION_CHECK: "${DISABLE_VERSION_CHECK:-false}"
+      # Disable password authentication (use OAuth only)
+      DISABLE_PASSWORD_AUTH: "${DISABLE_PASSWORD_AUTH:-false}"
+
+      # --- OAuth (optional) ---------------------------------------------------
+      # Comma-separated list of enabled providers (e.g. github,google,oidc)
+      OAUTH_PROVIDERS: "${OAUTH_PROVIDERS:-}"
+      # Comma-separated list of allowed OAuth email domains
+      OAUTH_ALLOWED_DOMAINS: "${OAUTH_ALLOWED_DOMAINS:-}"
+      # Automatically register users that log in with an OAuth provider
+      OAUTH_AUTO_REGISTER: "${OAUTH_AUTO_REGISTER:-false}"
+      # Which OAuth provider to auto-launch on the login page
+      OAUTH_AUTO_LAUNCH: "${OAUTH_AUTO_LAUNCH:-}"
+
+      # --- First-run initialization (optional) --------------------------------
+      # Set to true to create the admin user + interface automatically on boot
+      INIT_ENABLED: "${INIT_ENABLED:-false}"
+      INIT_USERNAME: "${INIT_USERNAME:-}"
+      INIT_PASSWORD: "${INIT_PASSWORD:-}"
+      # Comma-separated DNS servers handed to clients (Blocky is the default)
+      INIT_DNS: "${INIT_DNS:-}"
+      INIT_IPV4_CIDR: "${INIT_IPV4_CIDR:-}"
+      INIT_IPV6_CIDR: "${INIT_IPV6_CIDR:-}"
+      INIT_ALLOWED_IPS: "${INIT_ALLOWED_IPS:-}"
+      # Public hostname/IP clients connect to
+      INIT_HOST: "${INIT_HOST:-}"
+      INIT_PORT: "${INIT_PORT:-}"
+
+      # --- WireGuard ----------------------------------------------------------
+      WG_INTERFACE: "${WG_INTERFACE:-wg0}"
+      WG_PORT: "${WG_PORT:-51820}"
+      # DNS handed to clients; 127.0.0.1 routes through Blocky in-container
+      WG_DNS: "${WG_DNS:-127.0.0.1}"
+
+      # --- Blocky DNS ----------------------------------------------------------
+      # Set to false to disable the Blocky integration entirely
+      BLOCKY_ENABLED: "${BLOCKY_ENABLED:-true}"
+      # Host Blocky's HTTP API listens on (in-container)
+      BLOCKY_HOST: "${BLOCKY_HOST:-127.0.0.1}"
+      # Path to the Blocky config file (rewritten by the app on save)
+      BLOCKY_CONFIG: "${BLOCKY_CONFIG:-/etc/blocky/config.yml}"
+      # Directory where Blocky writes its CSV query logs
+      BLOCKY_LOG_DIR: "${BLOCKY_LOG_DIR:-/data/blocky/logs}"
+      # Port Blocky's HTTP API / metrics listen on (must match published port)
+      BLOCKY_HTTP_PORT: "${BLOCKY_HTTP_PORT:-4000}"
+
+      # --- VictoriaMetrics ------------------------------------------------------
+      # Set to false to disable the VictoriaMetrics integration
+      VM_ENABLED: "${VM_ENABLED:-true}"
+      # Base URL of the VictoriaMetrics HTTP API (in-container)
+      VM_URL: "${VM_URL:-http://127.0.0.1:8428}"
+      # Base URL of the VMUI web interface
+      VMUI_URL: "${VMUI_URL:-http://127.0.0.1:8428/vmui}"
+      # Data directory for time-series storage
+      VM_DATA_DIR: "${VM_DATA_DIR:-/data/victoriametrics}"
+      # Retention period for stored metrics
+      VM_RETENTION_PERIOD: "${VM_RETENTION_PERIOD:-30d}"
+      # HTTP listen address (VMUI is served here)
+      VM_HTTP_LISTEN_ADDR: "${VM_HTTP_LISTEN_ADDR:-:8428}"
+      # Bearer token for scraping wg-easy's /metrics endpoint.
+      # MUST match the wg-easy metrics password when one is configured
+      # (Settings → Metrics in the UI), otherwise the wg-easy scrape 401s.
+      VM_METRICS_TOKEN: "${VM_METRICS_TOKEN:-}"
 
 networks:
   wg:

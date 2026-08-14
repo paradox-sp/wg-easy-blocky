@@ -1,10 +1,18 @@
 services:
-  wg-easy:
+  wg-easy-blocky:
     build:
-      dockerfile: ./Dockerfile.dev
-    command: dev
+      context: .
+      dockerfile: Dockerfile
+      # Use the final runtime image (s6 + entrypoint + all binaries).
+      # The wg-easy s6 run script switches to the dev server when WG_EASY_DEV=true.
+      target: runtime
     volumes:
       - ./src/:/app/
+      # Writable mount so the app can overwrite the generated Blocky config.
+      # entrypoint.sh only copies the template if the file is absent, so the
+      # app's generated config persists in this host file across restarts.
+      - ./docker/blocky/config.yml:/etc/blocky/config.yml
+      - ./docker/s6/:/etc/s6-overlay/s6-rc.d/:ro
       - temp:/app/.nuxt/
       - temp1:/app/node_modules/
       - /lib/modules:/lib/modules:ro
@@ -12,15 +20,24 @@ services:
     ports:
       - "51820:51820/udp"
       - "51821:51821/tcp"
+      - "53:53/udp"
+      - "53:53/tcp"
+      - "4000:4000/tcp"
+      - "8428:8428/tcp"
     cap_add:
       - NET_ADMIN
       - SYS_MODULE
     environment:
+      - WG_EASY_DEV=true
       - INIT_ENABLED=true
       - INIT_HOST=test
       - INIT_PORT=51820
       - INIT_USERNAME=testtest
       - INIT_PASSWORD=Qweasdyxcv!2
+      - INSECURE=true
+      - DEBUG=Server,WireGuard,Database,CMD,Firewall
+      # Bearer token for scraping /metrics (must match the wg-easy metrics password if one is configured)
+      - VM_METRICS_TOKEN=${VM_METRICS_TOKEN}
 
 # folders should be generated inside container
 volumes:
