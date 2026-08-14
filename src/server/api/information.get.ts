@@ -2,7 +2,12 @@ import { defineEventHandler } from 'h3';
 import { gt } from 'semver';
 
 import Database from '#server/utils/Database';
-import { RELEASE, WG_ENV } from '#server/utils/config';
+import {
+  BLOCKY_ENV,
+  RELEASE,
+  VICTORIA_METRICS_ENV,
+  WG_ENV,
+} from '#server/utils/config';
 import { cachedFetchLatestRelease } from '#server/utils/release';
 
 export default defineEventHandler(async () => {
@@ -19,5 +24,7 @@ export default defineEventHandler(async () => {
     insecure,
     isAwg,
     firewallEnabled: wgInterface.firewallEnabled,
+    blockyEnabled: BLOCKY_ENV.ENABLED,
+    victoriaMetricsEnabled: VICTORIA_METRICS_ENV.ENABLED,
   };
 });

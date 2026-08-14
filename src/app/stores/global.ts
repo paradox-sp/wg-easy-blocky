@@ -6,6 +6,14 @@ export const useGlobalStore = defineStore('Global', () => {
     }
   );
 
+  const blockyEnabled = computed(
+    () => information.value?.blockyEnabled ?? false
+  );
+
+  const victoriaMetricsEnabled = computed(
+    () => information.value?.victoriaMetricsEnabled ?? false
+  );
+
   const sortClient = ref<'asc' | 'desc'>('asc');
 
   const uiShowCharts = useCookie<boolean>('uiShowCharts', {
@@ -23,6 +31,8 @@ export const useGlobalStore = defineStore('Global', () => {
   });
 
   return {
+    blockyEnabled,
+    victoriaMetricsEnabled,
     sortClient,
     information,
     refreshInformation,

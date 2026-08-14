@@ -53,13 +53,27 @@
 const { t } = useI18n();
 
 const route = useRoute();
+const globalStore = useGlobalStore();
 
-const menuItems = computed(() => [
-  { id: 'general', name: t('pages.admin.general') },
-  { id: 'config', name: t('pages.admin.config') },
-  { id: 'interface', name: t('pages.admin.interface') },
-  { id: 'hooks', name: t('pages.admin.hooks') },
-]);
+const menuItems = computed(() => {
+  const items: Array<{ id: string; name: string }> = [
+    { id: 'general', name: t('pages.admin.general') },
+    { id: 'config', name: t('pages.admin.config') },
+    { id: 'interface', name: t('pages.admin.interface') },
+    { id: 'hooks', name: t('pages.admin.hooks') },
+  ];
+
+  if (globalStore.blockyEnabled) {
+    items.push({ id: 'blocky', name: t('pages.admin.blocky') });
+    items.push({ id: 'dns-history', name: t('pages.admin.dnsHistory') });
+  }
+
+  if (globalStore.victoriaMetricsEnabled) {
+    items.push({ id: 'metrics', name: t('pages.admin.metrics') });
+  }
+
+  return items;
+});
 
 const defaultItem = { id: '', name: t('pages.admin.panel') };
 
