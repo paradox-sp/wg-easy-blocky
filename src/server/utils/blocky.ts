@@ -146,10 +146,12 @@ class Blocky {
     lines.push('clientLookup:');
     lines.push('  clients: {}');
     lines.push('');
-    lines.push('conditional:');
-    lines.push('  mapping:');
-    for (const [key, value] of Object.entries(config.conditional.mapping)) {
-      lines.push(`    ${key}: ${value}`);
+    if (Object.keys(config.conditional.mapping).length > 0) {
+      lines.push('conditional:');
+      lines.push('  mapping:');
+      for (const [key, value] of Object.entries(config.conditional.mapping)) {
+        lines.push(`    ${key}: ${value}`);
+      }
     }
     return lines.join('\n');
   }

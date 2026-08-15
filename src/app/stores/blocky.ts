@@ -43,6 +43,7 @@ export const useBlockyStore = defineStore('Blocky', () => {
         body: data,
       });
       await fetchConfig();
+      await fetchStatus();
     } catch (err) {
       error.value =
         (err as { data?: { message?: string } } | null)?.data?.message ||
@@ -61,6 +62,7 @@ export const useBlockyStore = defineStore('Blocky', () => {
         method: 'POST',
       });
       await fetchConfig();
+      await fetchStatus();
     } catch (err) {
       error.value =
         (err as { data?: { message?: string } } | null)?.data?.message ||

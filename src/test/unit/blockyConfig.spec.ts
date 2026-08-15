@@ -38,7 +38,7 @@ const DEFAULT_CONFIG = {
   caching: { minTime: '5m', maxTime: '30m', maxItemsCount: 10000 },
   queryLog: { type: 'csv', target: '/data/blocky/logs', logRetentionDays: 7 },
   prometheus: { enable: true, path: '/metrics' },
-  conditional: { mapping: { default: 'default' } },
+  conditional: { mapping: {} },
 };
 
 /**
@@ -303,9 +303,9 @@ describe('BlockyConfigUpdateSchema', () => {
 
     expect(
       BlockyConfigUpdateSchema.parse({
-        conditional: { mapping: { default: 'default' } },
+        conditional: { mapping: {} },
       })
-    ).toEqual({ conditional: { mapping: { default: 'default' } } });
+    ).toEqual({ conditional: { mapping: {} } });
   });
 
   test('accepts bare host and host:port upstream entries', () => {
@@ -511,7 +511,7 @@ describe('configToYaml clientGroupsBlock guard', () => {
     caching: { minTime: '5m', maxTime: '30m', maxItemsCount: 10000 },
     queryLog: { type: 'csv' as const, target: '/data/blocky/logs', logRetentionDays: 7 },
     prometheus: { enable: true, path: '/metrics' },
-    conditional: { mapping: { default: 'default' } },
+    conditional: { mapping: {} },
   };
 
   it('emits clientGroupsBlock entries for defined groups', () => {

@@ -101,7 +101,7 @@ export class BlockyConfigService {
         logRetentionDays: 7,
       },
       prometheus: { enable: true, path: '/metrics' },
-      conditional: { mapping: { default: 'default' } },
+      conditional: { mapping: {} },
     };
   }
 }
