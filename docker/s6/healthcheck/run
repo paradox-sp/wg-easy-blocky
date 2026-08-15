@@ -2,13 +2,13 @@
 # Health check script - runs periodically to verify all services
 while true; do
     # Check wg-easy (port 51821)
-    if ! curl -sf http://localhost:51821/api/status >/dev/null 2>&1; then
+    if ! curl -sf http://localhost:51821/ >/dev/null 2>&1; then
         echo "wg-easy health check failed"
         exit 1
     fi
 
     # Check Blocky (port 53 DNS + 4000 HTTP)
-    if ! curl -sf http://localhost:4000/health >/dev/null 2>&1; then
+    if ! curl -sf http://localhost:4000/blocking/status >/dev/null 2>&1; then
         echo "Blocky health check failed"
         exit 1
     fi

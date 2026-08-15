@@ -152,7 +152,7 @@ RUN ln -sf /usr/sbin/iptables-legacy /usr/sbin/iptables && \
     ln -sf /usr/sbin/ip6tables-legacy-save /usr/sbin/ip6tables-save
 
 # Create directories for Blocky, VictoriaMetrics, and SQLite
-RUN mkdir -p /etc/blocky /data/blocky /data/victoriametrics /etc/wireguard /etc/victoriametrics
+RUN mkdir -p /etc/blocky /data/blocky /data/blocky/logs /data/victoriametrics /etc/wireguard /etc/victoriametrics
 
 # Copy s6 service definitions
 COPY docker/s6/ /etc/s6-overlay/s6-rc.d/

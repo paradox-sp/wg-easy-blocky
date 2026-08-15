@@ -7,7 +7,7 @@ set -e
 echo "Starting wg-easy-blocky container..."
 
 # Create necessary directories
-mkdir -p /etc/wireguard /etc/blocky /data/blocky /data/victoriametrics /etc/amnezia
+mkdir -p /etc/wireguard /etc/blocky /data/blocky /data/blocky/logs /data/victoriametrics /etc/amnezia
 
 # Symlink for amneziawg compatibility
 ln -sf /etc/wireguard /etc/amnezia/amneziawg
