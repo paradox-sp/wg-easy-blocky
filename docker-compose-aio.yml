@@ -1,0 +1,105 @@
+# =============================================================================
+# wg-easy-blocky — single-container WireGuard VPN + Blocky DNS + VictoriaMetrics
+# All In One self contained docker compose
+#
+# Usage:
+#   docker compose up -d --build
+# =============================================================================
+
+volumes:
+  etc_wireguard:
+  blocky_data:
+  victoriametrics_data:
+
+services:
+  wg-easy-blocky:
+    image: ghcr.io/paradox-sp/wg-easy-blocky:dev
+    container_name: wg-easy-blocky
+    restart: unless-stopped
+
+    networks:
+      wg:
+        ipv4_address: 10.42.42.42
+        ipv6_address: fdcc:ad94:bacf:61a3::2a
+
+    ports:
+      - "51820:51820/udp"   # WireGuard VPN - must be exposed for peers to connect
+      - "51821:51821/tcp"   # wg-easy Web UI - admin interface, expose or reverse-proxy as needed
+      # - "53:53/udp"        # Blocky DNS (UDP) - uncomment to let LAN/host clients use Blocky as resolver, not just WG peers
+      # - "53:53/tcp"        # Blocky DNS (TCP) - needed for DNS responses >512B (DNSSEC, large TXT records)
+      # - "4000:4000/tcp"    # Blocky HTTP API - uncomment for external query log / metrics access; otherwise use `docker exec`
+      # - "8428:8428/tcp"    # VictoriaMetrics / VMUI - uncomment to browse VMUI from host; otherwise curl from inside container
+
+    volumes:
+      - etc_wireguard:/etc/wireguard              # WireGuard keys + peer configs, must persist across restarts
+      - blocky_data:/data/blocky                  # Blocky CSV query logs
+      - victoriametrics_data:/data/victoriametrics # VM time-series DB files
+      - /lib/modules:/lib/modules:ro               # host kernel modules, required if wireguard module isn't built into container kernel
+
+    cap_add:
+      - NET_ADMIN   # required: manage wg0 interface, routes, iptables NAT rules
+      - SYS_MODULE  # required: load wireguard kernel module if not already loaded on host
+      # - NET_RAW   # uncomment only if running under Podman (rootless netns needs it)
+    sysctls:
+      - net.ipv4.ip_forward=1                    # required: forward VPN client traffic to WAN
+      - net.ipv4.conf.all.src_valid_mark=1        # required: lets wg-quick's policy routing work with fwmark
+      - net.ipv6.conf.all.disable_ipv6=0          # keep IPv6 enabled in-container
+      - net.ipv6.conf.all.forwarding=1            # required: forward IPv6 VPN client traffic
+      - net.ipv6.conf.default.forwarding=1        # same, applied to interfaces created after boot
+
+    environment:
+      # --- wg-easy core ---
+      PORT: "51821"                 # Web UI listen port, must match the ports: mapping above
+      HOST: "0.0.0.0"                # Web UI bind address, 0.0.0.0 = all interfaces in-container
+      INSECURE: "false"              # true = allow UI over plain HTTP, keep false unless behind TLS-terminating proxy
+      DISABLE_IPV6: "false"          # true = strip IPv6 support from wg-easy entirely
+      DISABLE_VERSION_CHECK: "false" # true = skip wg-easy's GitHub release check on boot (useful for air-gapped hosts)
+      DISABLE_PASSWORD_AUTH: "false" # true = disable local password login, force OAuth-only auth
+
+      # --- OAuth (optional) ---
+      OAUTH_PROVIDERS: ""          # comma-separated: github,google,oidc — empty disables OAuth login
+      OAUTH_ALLOWED_DOMAINS: ""    # comma-separated email domains allowed to auth via OAuth, empty = no restriction
+      OAUTH_AUTO_REGISTER: "false" # true = auto-create wg-easy account on first OAuth login
+      OAUTH_AUTO_LAUNCH: ""        # provider name to auto-redirect to on login page (skips provider picker)
+
+      # --- First-run init (optional) ---
+      INIT_ENABLED: "false"   # true = auto-create admin user + wg0 interface on first boot, no manual UI setup
+      INIT_USERNAME: ""       # admin username created on first boot, only used if INIT_ENABLED=true
+      INIT_PASSWORD: ""       # admin password created on first boot, PLAINTEXT here — treat this file as a secret if set
+      INIT_DNS: ""            # comma-separated DNS servers pushed to WG clients on init (Blocky's 127.0.0.1 is default in-app)
+      INIT_IPV4_CIDR: ""      # VPN client IPv4 subnet, e.g. 10.8.0.0/24
+      INIT_IPV6_CIDR: ""      # VPN client IPv6 subnet
+      INIT_ALLOWED_IPS: ""    # AllowedIPs pushed to clients, e.g. 0.0.0.0/0 for full-tunnel
+      INIT_HOST: ""           # public hostname/IP clients connect to, goes into generated client configs
+      INIT_PORT: ""           # public port clients connect to, defaults to WG_PORT if unset
+
+      # --- WireGuard ---
+      WG_INTERFACE: "wg0"        # name of the WireGuard interface inside the container
+      WG_PORT: "51820"           # UDP port WireGuard listens on, must match ports: mapping above
+      WG_DNS: "127.0.0.1"        # DNS server pushed to VPN clients — 127.0.0.1 routes through in-container Blocky
+
+      # --- Blocky DNS ---
+      BLOCKY_ENABLED: "true"                    # false = fully disable Blocky, WG_DNS then needs an external resolver
+      BLOCKY_HOST: "127.0.0.1"                  # host Blocky's API listens on inside the container, keep as-is
+      BLOCKY_CONFIG: "/etc/blocky/config.yml"   # path Blocky's config is written/read from, rewritten when saved via UI
+      BLOCKY_LOG_DIR: "/data/blocky/logs"       # CSV query log output dir, persisted via blocky_data volume
+      BLOCKY_HTTP_PORT: "4000"                  # Blocky's HTTP API/metrics port, must match commented ports: entry if exposed
+
+      # --- VictoriaMetrics ---
+      VM_ENABLED: "true"                             # false = disable metrics storage/VMUI entirely
+      VM_URL: "http://127.0.0.1:8428"                # in-container VM HTTP API base URL, used by wg-easy to write metrics
+      VMUI_URL: "http://127.0.0.1:8428/vmui"         # VMUI dashboard URL, only reachable if 8428 port is exposed or tunneled
+      VM_DATA_DIR: "/data/victoriametrics"           # time-series storage path, persisted via victoriametrics_data volume
+      VM_RETENTION_PERIOD: "30d"                     # how long metrics are kept before VM prunes them
+      VM_HTTP_LISTEN_ADDR: ":8428"                   # VM's own listen addr, must match VM_URL/VMUI_URL port
+      VM_METRICS_TOKEN: ""                           # bearer token for scraping wg-easy /metrics — MUST match wg-easy's metrics password in Settings → Metrics or scrape 401s
+
+networks:
+  wg:
+    driver: bridge
+    enable_ipv6: true
+    ipam:
+      driver: default
+      config:
+        - subnet: 10.42.42.0/24            # internal v4 subnet for inter-service comms (wg-easy <-> blocky <-> VM)
+        - subnet: fdcc:ad94:bacf:61a3::/64  # internal v6 subnet, matches the container's static ipv6_address above
