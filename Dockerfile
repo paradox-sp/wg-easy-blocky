@@ -132,7 +132,6 @@ RUN apk add --no-cache \
     ip6tables \
     iproute2 \
     kmod \
-    iptables-legacy \
     wireguard-go \
     wireguard-tools \
     sqlite \
@@ -142,14 +141,17 @@ RUN apk add --no-cache \
 RUN mkdir -p /etc/amnezia
 RUN ln -sf /etc/wireguard /etc/amnezia/amneziawg
 
-# Use iptables-legacy (symlinks instead of update-alternatives to avoid the
-# dpkg dependency; Alpine's iptables-legacy package provides the -legacy binaries)
-RUN ln -sf /usr/sbin/iptables-legacy /usr/sbin/iptables && \
-    ln -sf /usr/sbin/iptables-legacy-restore /usr/sbin/iptables-restore && \
-    ln -sf /usr/sbin/iptables-legacy-save /usr/sbin/iptables-save && \
-    ln -sf /usr/sbin/ip6tables-legacy /usr/sbin/ip6tables && \
-    ln -sf /usr/sbin/ip6tables-legacy-restore /usr/sbin/ip6tables-restore && \
-    ln -sf /usr/sbin/ip6tables-legacy-save /usr/sbin/ip6tables-save
+# Use iptables-nft (nf_tables backend) — legacy ip_tables is not available on
+# modern kernels (e.g. RHEL 10), which made iptables-legacy fail with
+# "can't initialize iptables table `nat': Table does not exist".
+# Alpine >= 3.19 already defaults the plain names to xtables-nft-multi; we
+# keep explicit symlinks for clarity.
+RUN ln -sf /usr/sbin/iptables-nft /usr/sbin/iptables && \
+    ln -sf /usr/sbin/iptables-nft-restore /usr/sbin/iptables-restore && \
+    ln -sf /usr/sbin/iptables-nft-save /usr/sbin/iptables-save && \
+    ln -sf /usr/sbin/ip6tables-nft /usr/sbin/ip6tables && \
+    ln -sf /usr/sbin/ip6tables-nft-restore /usr/sbin/ip6tables-restore && \
+    ln -sf /usr/sbin/ip6tables-nft-save /usr/sbin/ip6tables-save
 
 # Create directories for Blocky, VictoriaMetrics, and SQLite
 RUN mkdir -p /etc/blocky /data/blocky /data/blocky/logs /data/victoriametrics /etc/wireguard /etc/victoriametrics

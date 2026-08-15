@@ -58,7 +58,7 @@ class Blocky {
     if (!BLOCKY_ENV.ENABLED) return null;
 
     try {
-      const response = await fetch(`${this.#baseUrl}/blocking/status`);
+      const response = await fetch(`${this.#baseUrl}/api/blocking/status`);
       if (!response.ok) return null;
       return await response.json();
     } catch {

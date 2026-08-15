@@ -12,7 +12,7 @@
     </div>
     <div
       :class="[
-        'mt-auto text-2xl font-semibold',
+        'mt-auto text-center text-2xl font-semibold',
         color === 'red'
           ? 'text-red-600 dark:text-red-400'
           : 'text-gray-800 dark:text-neutral-100',

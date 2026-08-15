@@ -7,8 +7,8 @@ while true; do
         exit 1
     fi
 
-    # Check Blocky (port 53 DNS + 4000 HTTP)
-    if ! curl -sf http://localhost:4000/blocking/status >/dev/null 2>&1; then
+    # Check Blocky (port 53 DNS + 4000 HTTP; REST API lives under /api)
+    if ! curl -sf http://localhost:4000/api/blocking/status >/dev/null 2>&1; then
         echo "Blocky health check failed"
         exit 1
     fi
