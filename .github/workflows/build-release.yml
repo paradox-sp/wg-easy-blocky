@@ -69,7 +69,13 @@ jobs:
   build:
     name: Build & Push (${{ matrix.platform }})
     needs: prepare
-    runs-on: ubuntu-latest
+    # Native runners: x64 for amd64, arm64 for arm64. Building linux/arm64 on
+    # an x64 runner would run every Dockerfile step through QEMU emulation,
+    # which makes the Go compiles (Blocky, VictoriaMetrics, amneziawg) take
+    # many hours. ubuntu-24.04-arm is a standard GitHub-hosted runner (GA for
+    # public repos; standard runner for private repos since Jan 2026).
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 120
     permissions:
       contents: read
       packages: write
@@ -79,13 +85,12 @@ jobs:
         include:
           - platform: linux/amd64
             suffix: amd64
+            runner: ubuntu-latest
           - platform: linux/arm64
             suffix: arm64
+            runner: ubuntu-24.04-arm
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
-
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@96fe6ef7f33517b61c61be40b68a1882f3264fb8 # v4
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@bb05f3f5519dd87d3ba754cc423b652a5edd6d2c # v4
@@ -117,8 +122,11 @@ jobs:
             VM_VERSION=${{ inputs.vm_version || 'v1.113.0' }}
           tags: ${{ steps.meta.outputs.tags }}
           push: true
+          # mode=max caches intermediate build stages (the Go compiles for
+          # Blocky/VictoriaMetrics/amneziawg) so re-runs are fast; mode=min
+          # would only cache the final image layers and rebuild from scratch.
           cache-from: type=gha,scope=${{ matrix.suffix }}
-          cache-to: type=gha,mode=min,scope=${{ matrix.suffix }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.suffix }}
 
       - name: Inspect image
         run: |
