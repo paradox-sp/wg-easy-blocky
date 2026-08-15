@@ -4,5 +4,6 @@ exec victoria-metrics \
     -retentionPeriod=${VM_RETENTION_PERIOD:-30d} \
     -storageDataPath=${VM_DATA_DIR:-/data/victoriametrics} \
     -promscrape.config=/etc/victoriametrics/scrape.yml \
+    -vmui.customDashboardsPath=/etc/victoriametrics/dashboards \
     -search.maxPointsPerTimeseries=100000 \
     -search.maxUniqueTimeseries=1000000

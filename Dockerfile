@@ -163,6 +163,7 @@ COPY docker/s6/ /etc/s6-overlay/s6-rc.d/
 COPY docker/entrypoint.sh /docker/entrypoint.sh
 COPY docker/blocky/config.yml /docker/blocky/config.yml
 COPY docker/victoriametrics/scrape.yml /etc/victoriametrics/scrape.yml
+COPY docker/victoriametrics/dashboards/ /etc/victoriametrics/dashboards/
 RUN chmod +x /docker/entrypoint.sh
 
 # Set Environment
