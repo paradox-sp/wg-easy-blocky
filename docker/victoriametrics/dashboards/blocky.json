@@ -1,0 +1,75 @@
+{
+  "title": "Blocky DNS",
+  "rows": [
+    {
+      "title": "Traffic",
+      "panels": [
+        {
+          "title": "Queries per second",
+          "width": 6,
+          "expr": ["sum(rate(blocky_query_total[5m]))"]
+        },
+        {
+          "title": "Blocked per second",
+          "width": 6,
+          "expr": ["sum(rate(blocky_response_total{response_type=~\"BLOCKED|REBIND\"}[5m]))"]
+        }
+      ]
+    },
+    {
+      "title": "Response mix",
+      "panels": [
+        {
+          "title": "Responses by type",
+          "width": 12,
+          "expr": ["sum(rate(blocky_response_total[5m])) by (response_type)"]
+        }
+      ]
+    },
+    {
+      "title": "Cache & blocking",
+      "panels": [
+        {
+          "title": "Cache hit rate",
+          "width": 4,
+          "expr": ["sum(rate(blocky_cache_hits_total[5m])) / (sum(rate(blocky_cache_hits_total[5m])) + sum(rate(blocky_cache_misses_total[5m])))"]
+        },
+        {
+          "title": "Cache entries",
+          "width": 4,
+          "expr": ["blocky_cache_entries"]
+        },
+        {
+          "title": "Blocking enabled",
+          "width": 4,
+          "expr": ["blocky_blocking_enabled"]
+        }
+      ]
+    },
+    {
+      "title": "Lists & latency",
+      "panels": [
+        {
+          "title": "Denylist entries by group",
+          "width": 4,
+          "expr": ["blocky_denylist_cache_entries"]
+        },
+        {
+          "title": "List refresh age (s)",
+          "width": 4,
+          "expr": ["time() - blocky_last_list_group_refresh_timestamp_seconds"]
+        },
+        {
+          "title": "Request latency p50/p95/p99",
+          "width": 4,
+          "expr": [
+            "histogram_quantile(0.5, sum(rate(blocky_request_duration_seconds_bucket[5m])) by (le))",
+            "histogram_quantile(0.95, sum(rate(blocky_request_duration_seconds_bucket[5m])) by (le))",
+            "histogram_quantile(0.99, sum(rate(blocky_request_duration_seconds_bucket[5m])) by (le))"
+          ],
+          "alias": ["p50", "p95", "p99"]
+        }
+      ]
+    }
+  ]
+}
