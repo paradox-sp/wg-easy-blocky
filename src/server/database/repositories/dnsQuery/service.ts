@@ -4,6 +4,7 @@ import { join } from 'node:path';
 import { createDebug } from 'obug';
 
 import { BLOCKY_ENV } from '#server/utils/config';
+import Database from '#server/utils/Database';
 import type {
   DnsHistoryQueryInput,
   DnsHistoryResponse,
@@ -191,15 +192,42 @@ class DnsQueryService {
     return { signature: parts.join('|'), files };
   }
 
+  /**
+   * Load every wg-easy client once and build an IP -> friendly name lookup
+   * covering both the tunnel IPv4 and IPv6 addresses, so history rows can be
+   * enriched with the alias configured on the VPN setup page. Never throws:
+   * any repository failure degrades to an empty map and queries keep showing
+   * the client IP only.
+   */
+  async #loadClientNameMap(): Promise<Map<string, string>> {
+    const ipToName = new Map<string, string>();
+    try {
+      const clients = await Database.clients.getAllPublic({});
+      for (const { name, ipv4Address, ipv6Address } of clients) {
+        if (ipv4Address) ipToName.set(ipv4Address, name);
+        if (ipv6Address) ipToName.set(ipv6Address, name);
+      }
+    } catch (error) {
+      DNS_DEBUG('Failed to load client names for DNS history:', error);
+    }
+    return ipToName;
+  }
+
   async getHistory(
     query: DnsHistoryQueryInput
   ): Promise<DnsHistoryResponse> {
     const rows = await this.#readLogRows();
 
+    // Resolve friendly client names from the wg-easy client repository once
+    // per request, AFTER the cached parse: the row cache stays pure (it holds
+    // raw CSV rows only) and enrichment always reflects the current VPN
+    // clients without ever changing the cache signature.
+    const ipToName = await this.#loadClientNameMap();
+
     let queries: DnsQueryPublic[] = [];
     let id = 0;
     for (const row of rows) {
-      const item = this.#rowToQuery(row, id);
+      const item = this.#rowToQuery(row, id, ipToName);
       if (item) {
         queries.push(item);
         id += 1;
@@ -305,7 +333,11 @@ class DnsQueryService {
     };
   }
 
-  #rowToQuery(row: string[], id: number): DnsQueryPublic | null {
+  #rowToQuery(
+    row: string[],
+    id: number,
+    ipToName: Map<string, string>
+  ): DnsQueryPublic | null {
     const timestampStr = row[0];
     const client = row[1];
     const domain = row[5];
@@ -323,6 +355,7 @@ class DnsQueryService {
       id,
       timestamp,
       client,
+      clientName: ipToName.get(client) ?? null,
       type: row[9],
       domain,
       answer: row[6] || null,

@@ -31,6 +31,22 @@ vi.mock('@libsql/client', () => ({
   })),
 }));
 
+// getHistory resolves friendly client names from the wg-easy client
+// repository (the Database singleton) per request. Mock the module so the
+// name map is controllable per-test and the real SQLite-backed service is
+// never constructed.
+const mockClientsRepo = vi.hoisted(() => ({
+  getAllPublic: vi.fn(),
+}));
+
+vi.mock('#server/utils/Database', () => ({
+  default: {
+    clients: {
+      getAllPublic: mockClientsRepo.getAllPublic,
+    },
+  },
+}));
+
 // The service checks the log directory exists before reading it. Mock it so
 // the fs/promises mocks below are exercised deterministically regardless of
 // the host environment.
@@ -164,6 +180,8 @@ beforeEach(() => {
   readdirMock.mockReset();
   readFileMock.mockReset();
   statMock.mockReset();
+  mockClientsRepo.getAllPublic.mockReset();
+  mockClientsRepo.getAllPublic.mockResolvedValue([]);
   mockBlockyEnv.ENABLED = true;
   mockBlockyEnv.LOG_DIR = LOG_DIR;
 });
@@ -474,6 +492,89 @@ describe('DnsQueryService CSV query log reader', () => {
     });
     expect(third.total).toBe(2);
     expect(readFileMock).toHaveBeenCalledTimes(2);
+  });
+
+  test('resolves the friendly client name for a matching tunnel IP', async () => {
+    mockLogFiles({ 'blocky.log': ROW_ALLOWED }); // client IP 10.8.0.2
+    mockClientsRepo.getAllPublic.mockResolvedValue([
+      {
+        name: 'My Phone',
+        ipv4Address: '10.8.0.2',
+        ipv6Address: 'fd00:0000:0000:0000:0000:0000:0000:0002',
+      },
+    ]);
+
+    const result = await DnsQueryService.getHistory({
+      limit: 100,
+      offset: 0,
+      sort: 'desc',
+    });
+
+    expect(result.total).toBe(1);
+    expect(result.queries[0]?.client).toBe('10.8.0.2'); // IP stays primary
+    expect(result.queries[0]?.clientName).toBe('My Phone');
+  });
+
+  test('resolves names for both IPv4 and IPv6 tunnel addresses', async () => {
+    // ROW_API uses client IP 10.8.0.4; ROW_V6 uses a tunnel IPv6 address.
+    const ROW_V6 = [
+      '2026-08-14 10:00:30',
+      'fd00::2',
+      'phone-v6',
+      '4',
+      'NOERROR',
+      'v6.example.com',
+      '::1',
+      'NOERROR',
+      'RESOLVED',
+      'AAAA',
+      'blocky-1',
+    ].join('\t');
+
+    mockLogFiles({ 'blocky.log': [ROW_API, ROW_V6].join('\n') });
+    mockClientsRepo.getAllPublic.mockResolvedValue([
+      { name: 'Desktop', ipv4Address: '10.8.0.4', ipv6Address: 'fd00::4' },
+      { name: 'My Phone', ipv4Address: '10.8.0.2', ipv6Address: 'fd00::2' },
+    ]);
+
+    const result = await DnsQueryService.getHistory({
+      limit: 100,
+      offset: 0,
+      sort: 'desc',
+    });
+
+    // Descending by timestamp: ROW_V6 (10:00:30) first, then ROW_API.
+    expect(result.queries[0]?.client).toBe('fd00::2');
+    expect(result.queries[0]?.clientName).toBe('My Phone');
+    expect(result.queries[1]?.client).toBe('10.8.0.4');
+    expect(result.queries[1]?.clientName).toBe('Desktop');
+  });
+
+  test('leaves clientName null for unknown IPs and when the client repo fails', async () => {
+    mockLogFiles({ 'blocky.log': ROW_ALLOWED }); // client IP 10.8.0.2
+    mockClientsRepo.getAllPublic.mockResolvedValue([
+      { name: 'Other', ipv4Address: '10.8.0.9', ipv6Address: 'fd00::9' },
+    ]);
+
+    const noMatch = await DnsQueryService.getHistory({
+      limit: 100,
+      offset: 0,
+      sort: 'desc',
+    });
+    expect(noMatch.total).toBe(1);
+    expect(noMatch.queries[0]?.clientName).toBeNull();
+
+    // A failing client repository must never break history loading.
+    mockClientsRepo.getAllPublic.mockRejectedValue(
+      new Error('db unavailable')
+    );
+    const degraded = await DnsQueryService.getHistory({
+      limit: 100,
+      offset: 0,
+      sort: 'desc',
+    });
+    expect(degraded.total).toBe(1);
+    expect(degraded.queries[0]?.clientName).toBeNull();
   });
 
   test('degrades gracefully when the log directory cannot be read', async () => {

@@ -100,7 +100,7 @@
               {{ formatTimestamp(query.timestamp) }}
             </td>
             <td class="whitespace-nowrap px-3 py-2 text-gray-600 dark:text-neutral-300">
-              {{ query.client }}
+              {{ query.client }}{{ query.clientName ? ' (' + query.clientName + ')' : '' }}
             </td>
             <td class="whitespace-nowrap px-3 py-2 text-gray-600 dark:text-neutral-300">
               {{ query.type }}

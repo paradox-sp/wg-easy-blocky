@@ -9,6 +9,8 @@ export interface DnsQueryPublic {
   id: number;
   timestamp: Date;
   client: string;
+  /** Friendly wg-easy client name for the client IP, when a match exists. */
+  clientName?: string | null;
   type: string;
   domain: string;
   answer: string | null;
