@@ -1,6 +1,6 @@
 <template>
   <div
-    class="flex flex-col gap-1 rounded-lg border-2 border-gray-100 bg-white p-4 shadow-sm transition dark:border-neutral-600 dark:bg-neutral-700"
+    class="flex h-full flex-col gap-1 rounded-lg border-2 border-gray-100 bg-white p-4 shadow-sm transition dark:border-neutral-600 dark:bg-neutral-700"
   >
     <div class="flex items-center justify-between">
       <span
@@ -12,7 +12,7 @@
     </div>
     <div
       :class="[
-        'text-2xl font-semibold',
+        'mt-auto text-2xl font-semibold',
         color === 'red'
           ? 'text-red-600 dark:text-red-400'
           : 'text-gray-800 dark:text-neutral-100',
