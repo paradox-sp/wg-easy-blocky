@@ -57,9 +57,7 @@ describe('VictoriaMetrics', () => {
     mockVictoriaMetricsEnv.ENABLED = false;
 
     await expect(VictoriaMetrics.query('up')).resolves.toBeNull();
-    await expect(
-      VictoriaMetrics.queryRange('up', 1, 2, 1)
-    ).resolves.toBeNull();
+    await expect(VictoriaMetrics.queryRange('up', 1, 2, 1)).resolves.toBeNull();
     await expect(VictoriaMetrics.getMetrics()).resolves.toBeNull();
     await expect(VictoriaMetrics.getVpnTraffic()).resolves.toBeNull();
     await expect(VictoriaMetrics.getDnsStats()).resolves.toBeNull();
@@ -73,7 +71,9 @@ describe('VictoriaMetrics', () => {
     ]);
     fetchMock.mockImplementation(async () => okJson(body));
 
-    await expect(VictoriaMetrics.query('up', 1720000000)).resolves.toEqual(body);
+    await expect(VictoriaMetrics.query('up', 1720000000)).resolves.toEqual(
+      body
+    );
     expect(fetchMock).toHaveBeenCalledWith(
       'http://127.0.0.1:8428/api/v1/query?query=up&time=1720000000'
     );

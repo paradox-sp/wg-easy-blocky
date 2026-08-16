@@ -15,7 +15,11 @@
     >
       <UiStatCard
         :title="t('admin.blocky.status')"
-        :value="store.status.enabled ? t('admin.blocky.enabled') : t('admin.blocky.disabled')"
+        :value="
+          store.status.enabled
+            ? t('admin.blocky.enabled')
+            : t('admin.blocky.disabled')
+        "
         :color="store.status.enabled ? undefined : 'red'"
       />
       <UiStatCard
@@ -24,7 +28,9 @@
         :value="formatAutoEnable(store.status.autoEnableInSec)"
       />
       <UiStatCard
-        v-if="store.status.disabledGroups && store.status.disabledGroups.length > 0"
+        v-if="
+          store.status.disabledGroups && store.status.disabledGroups.length > 0
+        "
         :title="t('admin.blocky.disabledGroups')"
         :value="store.status.disabledGroups.join(', ')"
       />

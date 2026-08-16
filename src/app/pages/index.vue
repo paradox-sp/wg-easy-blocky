@@ -119,9 +119,7 @@ onUnmounted(() => {
 
 const connectedPeers = computed(() => {
   if (!clientsStore.clients) return null;
-  return clientsStore.clients.filter(
-    (c) => c.latestHandshakeAt != null
-  ).length;
+  return clientsStore.clients.filter((c) => c.latestHandshakeAt != null).length;
 });
 
 function formatBytes(bytes?: number | null): string {

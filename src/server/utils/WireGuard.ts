@@ -20,6 +20,17 @@ const generateRandomHeaderValue = () =>
 
 class WireGuard {
   /**
+   * Short-TTL cache for `wg dump` so the metrics scrape, the dashboard and
+   * client-list requests don't each spawn a subprocess. 5s staleness is
+   * invisible at UI/scrape cadence; the DB rows are always fresh.
+   */
+  #dumpCache: {
+    interfaceName: string;
+    expiresAt: number;
+    dump: Awaited<ReturnType<typeof wg.dump>>;
+  } | null = null;
+
+  /**
    * Save and sync config
    */
   async saveConfig() {
@@ -98,7 +109,7 @@ class WireGuard {
   async dumpByPublicKey(publicKey: string) {
     const wgInterface = await Database.interfaces.get();
 
-    const dump = await wg.dump(wgInterface.name);
+    const dump = await this.#cachedDump(wgInterface.name);
     const clientDump = dump.find(
       ({ publicKey: dumpPublicKey }) => dumpPublicKey === publicKey
     );
@@ -130,8 +141,26 @@ class WireGuard {
     }));
 
     // Loop WireGuard status
-    const dump = await wg.dump(wgInterface.name);
+    const dump = await this.#cachedDump(wgInterface.name);
     return mergeClientStatuses(clients, dump);
+  }
+
+  /**
+   * Run `wg dump` for an interface, reusing the result for up to 5 seconds.
+   */
+  async #cachedDump(interfaceName: string) {
+    const now = Date.now();
+    if (
+      this.#dumpCache &&
+      this.#dumpCache.interfaceName === interfaceName &&
+      this.#dumpCache.expiresAt > now
+    ) {
+      return this.#dumpCache.dump;
+    }
+
+    const dump = await wg.dump(interfaceName);
+    this.#dumpCache = { interfaceName, expiresAt: now + 5_000, dump };
+    return dump;
   }
 
   async getClientConfiguration({ clientId }: { clientId: ID }) {
@@ -241,7 +270,6 @@ class WireGuard {
     WG_DEBUG('Cron Job started successfully.');
   }
 
-  // TODO: handle as worker_thread
   async startCronJob() {
     setIntervalImmediately(() => {
       this.cronJob().catch((err) => {
@@ -265,10 +293,11 @@ class WireGuard {
   async cronJob() {
     const clients = await Database.clients.getAll();
     let needsSave = false;
-    // Expires Feature
+
     for (const client of clients) {
-      if (client.enabled !== true) continue;
+      // Expires Feature
       if (
+        client.enabled === true &&
         client.expiresAt !== null &&
         new Date() > new Date(client.expiresAt)
       ) {
@@ -276,9 +305,7 @@ class WireGuard {
         await Database.clients.toggle(client.id, false);
         needsSave = true;
       }
-    }
-    // One Time Link Feature
-    for (const client of clients) {
+      // One Time Link Feature
       if (
         client.oneTimeLink !== null &&
         new Date() > new Date(client.oneTimeLink.expiresAt)
@@ -303,7 +330,5 @@ Please follow the instructions on https://wg-easy.github.io/wg-easy/latest/advan
 `
   );
 }
-
-// TODO: make static or object
 
 export default new WireGuard();

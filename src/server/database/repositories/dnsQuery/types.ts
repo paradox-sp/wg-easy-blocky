@@ -1,7 +1,7 @@
 import type { InferSelectModel } from 'drizzle-orm';
 import z from 'zod';
 
-import { dnsQuery } from './schema';
+import type { dnsQuery } from './schema';
 
 export type DnsQueryType = InferSelectModel<typeof dnsQuery>;
 

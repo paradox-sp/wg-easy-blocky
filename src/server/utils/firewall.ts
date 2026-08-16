@@ -46,6 +46,28 @@ function sanitizeComment(clientId: number, clientName: string): string {
 }
 
 /**
+ * Run `fn` over `items` with at most `concurrency` promises in flight.
+ */
+async function mapWithConcurrency<T>(
+  items: T[],
+  concurrency: number,
+  fn: (item: T) => Promise<void>
+): Promise<void> {
+  let next = 0;
+  const workers = Array.from(
+    { length: Math.min(concurrency, items.length) },
+    async () => {
+      while (next < items.length) {
+        const index = next;
+        next += 1;
+        await fn(items[index]!);
+      }
+    }
+  );
+  await Promise.all(workers);
+}
+
+/**
  * Run an iptables command and, when IPv6 is enabled, the equivalent
  * ip6tables command (with every occurrence of the executable swapped).
  */
@@ -280,15 +302,19 @@ export const firewall = {
       // Flush existing rules
       await this.flushChain(enableIpv6);
 
-      // Apply rules for each enabled client
-      for (const client of clients) {
-        if (!client.enabled) continue;
-        await this.applyClientRules(
-          client,
-          userConfig.defaultAllowedIps,
-          enableIpv6
-        );
-      }
+      // Apply rules for each enabled client. Order among ACCEPT rules is
+      // irrelevant — the final DROP is appended after all of them — so
+      // applying them concurrently is safe and much faster on large configs.
+      await mapWithConcurrency(
+        clients.filter((client) => client.enabled),
+        8,
+        (client) =>
+          this.applyClientRules(
+            client,
+            userConfig.defaultAllowedIps,
+            enableIpv6
+          )
+      );
 
       // Add final DROP for any traffic not explicitly allowed
       await execDualStack(`iptables -A ${CHAIN_NAME} -j DROP`, enableIpv6);

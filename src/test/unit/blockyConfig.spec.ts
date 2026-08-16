@@ -1,6 +1,7 @@
 import { describe, expect, it, test, vi } from 'vitest';
 
 import type { DBType } from '#db/sqlite';
+import Blocky from '#server/utils/blocky';
 import { BlockyConfigService } from '#server/database/repositories/blockyConfig/service';
 import { BlockyConfigUpdateSchema } from '#server/database/repositories/blockyConfig/types';
 
@@ -172,10 +173,12 @@ describe('BlockyConfigService', () => {
     });
 
     expect(upsertExecute).toHaveBeenCalledTimes(1);
-    const [key, value] = upsertExecute.mock.calls[0] as [string, string];
-    expect(key).toBe('config');
+    const [params] = upsertExecute.mock.calls[0] as [
+      { key: string; value: string },
+    ];
+    expect(params.key).toBe('config');
 
-    const persisted = JSON.parse(value);
+    const persisted = JSON.parse(params.value);
     expect(persisted.upstream).toEqual(['https://custom.example/dns-query']);
     // Shallow merge: the partial prometheus object replaces the default one.
     expect(persisted.prometheus).toEqual({ enable: false, path: '/metrics' });
@@ -193,9 +196,11 @@ describe('BlockyConfigService', () => {
 
     await service.updateConfig({ caching: { maxItemsCount: 500 } });
 
-    const [key, value] = upsertExecute.mock.calls[0] as [string, string];
-    expect(key).toBe('config');
-    expect(JSON.parse(value).caching).toEqual({ maxItemsCount: 500 });
+    const [params] = upsertExecute.mock.calls[0] as [
+      { key: string; value: string },
+    ];
+    expect(params.key).toBe('config');
+    expect(JSON.parse(params.value).caching).toEqual({ maxItemsCount: 500 });
   });
 
   test('resetToDefaults persists the defaults', async () => {
@@ -206,9 +211,11 @@ describe('BlockyConfigService', () => {
     await service.resetToDefaults();
 
     expect(upsertExecute).toHaveBeenCalledTimes(1);
-    const [key, value] = upsertExecute.mock.calls[0] as [string, string];
-    expect(key).toBe('config');
-    expect(JSON.parse(value)).toEqual(DEFAULT_CONFIG);
+    const [params] = upsertExecute.mock.calls[0] as [
+      { key: string; value: string },
+    ];
+    expect(params.key).toBe('config');
+    expect(JSON.parse(params.value)).toEqual(DEFAULT_CONFIG);
   });
 
   test('getAll returns every stored config row', async () => {
@@ -283,7 +290,9 @@ describe('BlockyConfigUpdateSchema', () => {
       BlockyConfigUpdateSchema.parse({
         caching: { minTime: '5m', maxTime: '30m', maxItemsCount: 100 },
       })
-    ).toEqual({ caching: { minTime: '5m', maxTime: '30m', maxItemsCount: 100 } });
+    ).toEqual({
+      caching: { minTime: '5m', maxTime: '30m', maxItemsCount: 100 },
+    });
 
     expect(
       BlockyConfigUpdateSchema.parse({
@@ -496,8 +505,6 @@ describe('BlockyConfigUpdateSchema', () => {
 // configToYaml guard tests
 vi.mock('#server/utils/Database', () => ({ default: {} }));
 
-import Blocky from '#server/utils/blocky';
-
 describe('configToYaml clientGroupsBlock guard', () => {
   const baseConfig = {
     upstream: ['https://dns.google/dns-query'],
@@ -509,7 +516,11 @@ describe('configToYaml clientGroupsBlock guard', () => {
       clientGroupsBlock: { default: ['10.0.0.2'], ads: ['10.0.0.3'] },
     },
     caching: { minTime: '5m', maxTime: '30m', maxItemsCount: 10000 },
-    queryLog: { type: 'csv' as const, target: '/data/blocky/logs', logRetentionDays: 7 },
+    queryLog: {
+      type: 'csv' as const,
+      target: '/data/blocky/logs',
+      logRetentionDays: 7,
+    },
     prometheus: { enable: true, path: '/metrics' },
     conditional: { mapping: {} },
   };

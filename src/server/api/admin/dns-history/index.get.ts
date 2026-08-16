@@ -5,12 +5,16 @@ import { definePermissionEventHandler } from '#server/utils/handler';
 import { validateZod } from '#server/utils/types';
 import { DnsHistoryQuerySchema } from '#db/repositories/dnsQuery/types';
 
-export default definePermissionEventHandler('admin', 'any', async ({ event }) => {
-  const query = await getValidatedQuery(
-    event,
-    validateZod(DnsHistoryQuerySchema, event)
-  );
+export default definePermissionEventHandler(
+  'admin',
+  'any',
+  async ({ event }) => {
+    const query = await getValidatedQuery(
+      event,
+      validateZod(DnsHistoryQuerySchema, event)
+    );
 
-  const result = await DnsQuery.getHistory(query);
-  return { success: true, ...result };
-});
+    const result = await DnsQuery.getHistory(query);
+    return { success: true, ...result };
+  }
+);

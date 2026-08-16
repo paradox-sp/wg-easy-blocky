@@ -106,10 +106,7 @@ class VictoriaMetrics {
         this.query('sum(rate(blocky_cache_hits_total[5m]))'),
         this.query('sum(rate(blocky_cache_misses_total[5m]))'),
       ]);
-    if (
-      !qpsResult?.data?.result?.length &&
-      !bpsResult?.data?.result?.length
-    ) {
+    if (!qpsResult?.data?.result?.length && !bpsResult?.data?.result?.length) {
       return null;
     }
 
@@ -121,18 +118,19 @@ class VictoriaMetrics {
     return {
       queriesPerSec: Number(qpsResult?.data?.result?.[0]?.value?.[1]) || 0,
       blockedPerSec: Number(bpsResult?.data?.result?.[0]?.value?.[1]) || 0,
-      cacheHitRate: (cacheHits + cacheMisses) === 0 ? 0 : cacheHits / (cacheHits + cacheMisses),
+      cacheHitRate:
+        cacheHits + cacheMisses === 0
+          ? 0
+          : cacheHits / (cacheHits + cacheMisses),
     };
   }
 
-  async getPeerStats(): Promise<
-    Array<{
-      name: string;
-      rx: number;
-      tx: number;
-      lastHandshake: number;
-    }> | null
-  > {
+  async getPeerStats(): Promise<Array<{
+    name: string;
+    rx: number;
+    tx: number;
+    lastHandshake: number;
+  }> | null> {
     const result = await this.query(
       '{__name__=~"wireguard_(received_bytes|sent_bytes|latest_handshake_seconds)"}'
     );

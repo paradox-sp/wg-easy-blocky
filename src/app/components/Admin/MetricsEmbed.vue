@@ -1,5 +1,7 @@
 <template>
-  <div class="w-full overflow-hidden rounded-lg border border-gray-100 dark:border-neutral-600">
+  <div
+    class="w-full overflow-hidden rounded-lg border border-gray-100 dark:border-neutral-600"
+  >
     <IconsLoading
       v-if="loading"
       class="mx-auto my-8 w-6 animate-spin text-gray-400"

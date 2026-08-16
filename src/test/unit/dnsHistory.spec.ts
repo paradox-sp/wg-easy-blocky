@@ -1,6 +1,7 @@
-import { beforeEach, describe, expect, test, vi } from 'vitest';
 import type { Stats } from 'node:fs';
 import { readdir, readFile, stat } from 'node:fs/promises';
+
+import { beforeEach, describe, expect, test, vi } from 'vitest';
 
 import DnsQueryService from '#server/database/repositories/dnsQuery/service';
 import { DnsHistoryQuerySchema } from '#server/database/repositories/dnsQuery/types';
@@ -25,9 +26,9 @@ vi.mock('#server/utils/config', () => ({
 // not use @libsql/client, so this mock becomes inert once the rewrite is in.
 vi.mock('@libsql/client', () => ({
   createClient: vi.fn(() => ({
-    execute: vi.fn().mockRejectedValue(
-      new Error('unable to open database file')
-    ),
+    execute: vi
+      .fn()
+      .mockRejectedValue(new Error('unable to open database file')),
   })),
 }));
 
@@ -223,11 +224,7 @@ describe('DnsQueryService CSV query log reader', () => {
     });
 
     expect(result.total).toBe(3);
-    expect(result.queries.map((q) => q.blocked)).toEqual([
-      false,
-      false,
-      true,
-    ]);
+    expect(result.queries.map((q) => q.blocked)).toEqual([false, false, true]);
     const blocked = result.queries.find((q) => q.blocked);
     expect(blocked?.domain).toBe('bad.example.com');
     expect(blocked?.reason).toBe('BLOCKED (ads: bad.example.com)');
@@ -442,7 +439,9 @@ describe('DnsQueryService CSV query log reader', () => {
     // Only the .log files are read; readme.txt is never opened.
     expect(readFileMock).toHaveBeenCalledTimes(2);
     expect(
-      readFileMock.mock.calls.every(([path]) => !String(path).endsWith('readme.txt'))
+      readFileMock.mock.calls.every(
+        ([path]) => !String(path).endsWith('readme.txt')
+      )
     ).toBe(true);
   });
 
@@ -565,9 +564,7 @@ describe('DnsQueryService CSV query log reader', () => {
     expect(noMatch.queries[0]?.clientName).toBeNull();
 
     // A failing client repository must never break history loading.
-    mockClientsRepo.getAllPublic.mockRejectedValue(
-      new Error('db unavailable')
-    );
+    mockClientsRepo.getAllPublic.mockRejectedValue(new Error('db unavailable'));
     const degraded = await DnsQueryService.getHistory({
       limit: 100,
       offset: 0,
@@ -578,7 +575,9 @@ describe('DnsQueryService CSV query log reader', () => {
   });
 
   test('degrades gracefully when the log directory cannot be read', async () => {
-    readdirMock.mockRejectedValue(new Error('ENOENT: no such file or directory'));
+    readdirMock.mockRejectedValue(
+      new Error('ENOENT: no such file or directory')
+    );
 
     await expect(
       DnsQueryService.getHistory({ limit: 50, offset: 10, sort: 'desc' })

@@ -1,10 +1,11 @@
 import { defineStore } from 'pinia';
+
 import type {
   DnsHistoryResponse,
   DnsQueryPublic,
 } from '#db/repositories/dnsQuery/types';
 
-export interface DnsStats {
+export interface DnsHistoryStats {
   totalQueries: number;
   blockedQueries: number;
   allowedQueries: number;
@@ -30,7 +31,7 @@ export const useDnsHistoryStore = defineStore('DnsHistory', () => {
   const limit = ref(100);
   const offset = ref(0);
   const clients = ref<string[]>([]);
-  const stats = ref<DnsStats>({
+  const stats = ref<DnsHistoryStats>({
     totalQueries: 0,
     blockedQueries: 0,
     allowedQueries: 0,
@@ -98,7 +99,7 @@ export const useDnsHistoryStore = defineStore('DnsHistory', () => {
   async function fetchStats() {
     const data = await run(
       async () =>
-        await $fetch<{ success: boolean; stats: DnsStats }>(
+        await $fetch<{ success: boolean; stats: DnsHistoryStats }>(
           '/api/admin/dns-history/stats'
         ),
       'Failed to fetch DNS stats'

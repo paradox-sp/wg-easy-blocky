@@ -3,8 +3,10 @@ import { setHeader } from 'h3';
 import Database from '#server/utils/Database';
 import WireGuard from '#server/utils/WireGuard';
 import { defineMetricsHandler } from '#server/utils/handler';
-import { formatPrometheusLabels } from '#server/utils/prometheus';
-import { isPeerConnected } from '#shared/utils/time';
+import {
+  collectPeerStats,
+  formatPrometheusLabels,
+} from '#server/utils/prometheus';
 
 export default defineMetricsHandler('prometheus', async ({ event }) => {
   setHeader(event, 'Content-Type', 'text/plain');
@@ -14,20 +16,15 @@ export default defineMetricsHandler('prometheus', async ({ event }) => {
 async function getPrometheusResponse() {
   const wgInterface = await Database.interfaces.get();
   const clients = await WireGuard.getAllClients();
-  let wireguardEnabledPeersCount = 0;
-  let wireguardConnectedPeersCount = 0;
+  const {
+    configured: wireguardConfiguredPeersCount,
+    enabled: wireguardEnabledPeersCount,
+    connected: wireguardConnectedPeersCount,
+  } = collectPeerStats(clients);
   const wireguardSentBytes = [];
   const wireguardReceivedBytes = [];
   const wireguardLatestHandshakeSeconds = [];
   for (const client of clients) {
-    if (client.enabled === true) {
-      wireguardEnabledPeersCount++;
-    }
-
-    if (isPeerConnected(client)) {
-      wireguardConnectedPeersCount++;
-    }
-
     const id = formatPrometheusLabels({
       interface: wgInterface.name,
       enabled: client.enabled,
@@ -53,7 +50,7 @@ async function getPrometheusResponse() {
   const returnText = [
     '# HELP wireguard_configured_peers',
     '# TYPE wireguard_configured_peers gauge',
-    `wireguard_configured_peers{${id}} ${clients.length}`,
+    `wireguard_configured_peers{${id}} ${wireguardConfiguredPeersCount}`,
     '',
     '# HELP wireguard_enabled_peers',
     '# TYPE wireguard_enabled_peers gauge',

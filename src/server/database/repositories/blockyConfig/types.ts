@@ -1,7 +1,7 @@
 import type { InferSelectModel } from 'drizzle-orm';
 import z from 'zod';
 
-import { blockyConfig } from './schema';
+import type { blockyConfig } from './schema';
 
 import { safeStringRefine, t } from '#server/utils/types';
 
@@ -61,10 +61,10 @@ const BLOCKY_UPSTREAM_PROTOCOLS = new Set([
 
 // Bare hostname or IPv4 with an optional numeric port (up to five digits;
 // range enforcement is left to Blocky itself).
-const BARE_HOST_OR_IP = /^[a-zA-Z0-9.\-]+(?::\d{1,5})?$/;
+const BARE_HOST_OR_IP = /^[a-zA-Z0-9.-]+(?::\d{1,5})?$/;
 
 function isValidBlockyUpstream(value: string): boolean {
-  const schemeMatch = /^([a-zA-Z][a-zA-Z0-9+.\-]*):\/\//.exec(value);
+  const schemeMatch = /^([a-zA-Z][a-zA-Z0-9+.-]*):\/\//.exec(value);
   if (schemeMatch) {
     if (!BLOCKY_UPSTREAM_PROTOCOLS.has(`${schemeMatch[1]}:`)) return false;
     try {
@@ -101,10 +101,14 @@ const positiveInt = z
   .positive({ message: t('zod.blocky.caching') });
 
 export const BlockyConfigUpdateSchema = z.object({
-  upstream: z.array(upstreamEntry, { message: t('zod.blocky.upstream') }),
-  bootstrapDns: z.array(bootstrapDnsEntry, {
-    message: t('zod.blocky.bootstrapDns'),
-  }),
+  upstream: z
+    .array(upstreamEntry, { message: t('zod.blocky.upstream') })
+    .optional(),
+  bootstrapDns: z
+    .array(bootstrapDnsEntry, {
+      message: t('zod.blocky.bootstrapDns'),
+    })
+    .optional(),
   blocking: z
     .object({
       blockType: z.enum(['zeroIp', 'nxdomain'], {
@@ -133,7 +137,9 @@ export const BlockyConfigUpdateSchema = z.object({
       type: z.enum(['csv', 'console', 'none'], {
         message: t('zod.blocky.queryLog'),
       }),
-      target: z.string({ message: t('zod.blocky.queryLog') }).pipe(safeStringRefine),
+      target: z
+        .string({ message: t('zod.blocky.queryLog') })
+        .pipe(safeStringRefine),
       logRetentionDays: positiveInt,
     })
     .optional(),

@@ -1,15 +1,17 @@
 import { existsSync } from 'node:fs';
 import { readdir, readFile, stat } from 'node:fs/promises';
 import { join } from 'node:path';
+
 import { createDebug } from 'obug';
 
-import { BLOCKY_ENV } from '#server/utils/config';
-import Database from '#server/utils/Database';
 import type {
   DnsHistoryQueryInput,
   DnsHistoryResponse,
   DnsQueryPublic,
 } from './types';
+
+import { BLOCKY_ENV } from '#server/utils/config';
+import Database from '#server/utils/Database';
 
 const DNS_DEBUG = createDebug('DNSHistory');
 
@@ -213,9 +215,7 @@ class DnsQueryService {
     return ipToName;
   }
 
-  async getHistory(
-    query: DnsHistoryQueryInput
-  ): Promise<DnsHistoryResponse> {
+  async getHistory(query: DnsHistoryQueryInput): Promise<DnsHistoryResponse> {
     const rows = await this.#readLogRows();
 
     // Resolve friendly client names from the wg-easy client repository once
@@ -356,7 +356,7 @@ class DnsQueryService {
       timestamp,
       client,
       clientName: ipToName.get(client) ?? null,
-      type: row[9],
+      type: row[9] ?? '',
       domain,
       answer: row[6] || null,
       reason: row[4] || null,

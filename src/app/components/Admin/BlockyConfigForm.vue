@@ -137,10 +137,7 @@ onMounted(async () => {
 });
 
 type ArrayField =
-  | 'upstream'
-  | 'bootstrapDns'
-  | 'blocking.blockLists'
-  | 'blocking.allowLists';
+  'upstream' | 'bootstrapDns' | 'blocking.blockLists' | 'blocking.allowLists';
 
 function getArray(field: ArrayField): string[] {
   if (field === 'upstream') return form.upstream;

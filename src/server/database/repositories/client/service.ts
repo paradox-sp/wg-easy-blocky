@@ -78,10 +78,7 @@ export class ClientService {
   /**
    * Query clients without sensitive data, optionally scoped to a user.
    */
-  async #queryPublicClients(
-    { filter, sort }: ClientQueryType,
-    userId?: ID
-  ) {
+  async #queryPublicClients({ filter, sort }: ClientQueryType, userId?: ID) {
     const filters = [];
 
     if (filter?.trim()) {
@@ -100,10 +97,7 @@ export class ClientService {
         with: {
           oneTimeLink: true,
         },
-        where: and(
-          ...(userId ? [eq(client.userId, userId)] : []),
-          ...filters
-        ),
+        where: and(...(userId ? [eq(client.userId, userId)] : []), ...filters),
         columns: {
           privateKey: false,
           preSharedKey: false,

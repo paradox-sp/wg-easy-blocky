@@ -1,0 +1,19 @@
+# All text files are stored with LF line endings and checked out as LF.
+# (Previously, Windows autocrlf produced CRLF working-tree copies of the
+# upstream wg-easy files even though the committed blobs were LF — the
+# catch-all below pins the behavior explicitly and kills that churn.)
+* text=auto eol=lf
+
+# Redundant with the catch-all, kept as documentation of the code types.
+*.ts text eol=lf
+*.vue text eol=lf
+*.js text eol=lf
+*.mjs text eol=lf
+*.cjs text eol=lf
+*.json text eol=lf
+*.md text eol=lf
+*.yml text eol=lf
+*.yaml text eol=lf
+*.sh text eol=lf
+Dockerfile text eol=lf
+Dockerfile.* text eol=lf

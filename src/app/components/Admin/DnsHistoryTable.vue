@@ -3,7 +3,9 @@
     <!-- Filters -->
     <div class="mb-4 flex flex-wrap items-end gap-3">
       <div class="flex flex-col gap-1">
-        <FormLabel for="dns-search">{{ t('admin.dnsHistory.search') }}</FormLabel>
+        <FormLabel for="dns-search">{{
+          t('admin.dnsHistory.search')
+        }}</FormLabel>
         <div class="relative">
           <IconsMagnifyingGlass
             class="pointer-events-none absolute left-2 top-1/2 size-4 -translate-y-1/2 text-gray-400 dark:text-neutral-400"
@@ -18,7 +20,9 @@
         </div>
       </div>
       <div class="flex flex-col gap-1">
-        <FormLabel for="dns-client">{{ t('admin.dnsHistory.client') }}</FormLabel>
+        <FormLabel for="dns-client">{{
+          t('admin.dnsHistory.client')
+        }}</FormLabel>
         <BaseSelect
           id="dns-client"
           v-model="selectedClient"
@@ -44,10 +48,7 @@
     </div>
 
     <!-- Loading state -->
-    <div
-      v-if="store.loading"
-      class="flex items-center justify-center py-8"
-    >
+    <div v-if="store.loading" class="flex items-center justify-center py-8">
       <IconsLoading class="mx-auto w-6 animate-spin text-gray-400" />
     </div>
 
@@ -64,28 +65,44 @@
       <table class="w-full text-left text-sm">
         <thead>
           <tr class="border-b border-gray-100 dark:border-neutral-600">
-            <th class="px-3 py-2 font-medium text-gray-500 dark:text-neutral-400">
+            <th
+              class="px-3 py-2 font-medium text-gray-500 dark:text-neutral-400"
+            >
               {{ t('admin.dnsHistory.timestamp') }}
             </th>
-            <th class="px-3 py-2 font-medium text-gray-500 dark:text-neutral-400">
+            <th
+              class="px-3 py-2 font-medium text-gray-500 dark:text-neutral-400"
+            >
               {{ t('admin.dnsHistory.client') }}
             </th>
-            <th class="px-3 py-2 font-medium text-gray-500 dark:text-neutral-400">
+            <th
+              class="px-3 py-2 font-medium text-gray-500 dark:text-neutral-400"
+            >
               {{ t('admin.dnsHistory.type') }}
             </th>
-            <th class="px-3 py-2 font-medium text-gray-500 dark:text-neutral-400">
+            <th
+              class="px-3 py-2 font-medium text-gray-500 dark:text-neutral-400"
+            >
               {{ t('admin.dnsHistory.domain') }}
             </th>
-            <th class="px-3 py-2 font-medium text-gray-500 dark:text-neutral-400">
+            <th
+              class="px-3 py-2 font-medium text-gray-500 dark:text-neutral-400"
+            >
               {{ t('admin.dnsHistory.answer') }}
             </th>
-            <th class="px-3 py-2 font-medium text-gray-500 dark:text-neutral-400">
+            <th
+              class="px-3 py-2 font-medium text-gray-500 dark:text-neutral-400"
+            >
               {{ t('admin.dnsHistory.reason') }}
             </th>
-            <th class="px-3 py-2 font-medium text-gray-500 dark:text-neutral-400">
+            <th
+              class="px-3 py-2 font-medium text-gray-500 dark:text-neutral-400"
+            >
               {{ t('admin.dnsHistory.duration') }}
             </th>
-            <th class="px-3 py-2 font-medium text-gray-500 dark:text-neutral-400">
+            <th
+              class="px-3 py-2 font-medium text-gray-500 dark:text-neutral-400"
+            >
               {{ t('admin.dnsHistory.blocked') }}
             </th>
           </tr>
@@ -96,25 +113,40 @@
             :key="i"
             class="border-b border-gray-50 last:border-b-0 dark:border-neutral-600/50"
           >
-            <td class="whitespace-nowrap px-3 py-2 text-gray-600 dark:text-neutral-300">
+            <td
+              class="whitespace-nowrap px-3 py-2 text-gray-600 dark:text-neutral-300"
+            >
               {{ formatTimestamp(query.timestamp) }}
             </td>
-            <td class="whitespace-nowrap px-3 py-2 text-gray-600 dark:text-neutral-300">
-              {{ query.client }}{{ query.clientName ? ' (' + query.clientName + ')' : '' }}
+            <td
+              class="whitespace-nowrap px-3 py-2 text-gray-600 dark:text-neutral-300"
+            >
+              {{ query.client
+              }}{{ query.clientName ? ' (' + query.clientName + ')' : '' }}
             </td>
-            <td class="whitespace-nowrap px-3 py-2 text-gray-600 dark:text-neutral-300">
+            <td
+              class="whitespace-nowrap px-3 py-2 text-gray-600 dark:text-neutral-300"
+            >
               {{ query.type }}
             </td>
-            <td class="max-w-48 truncate px-3 py-2 text-gray-600 dark:text-neutral-300">
+            <td
+              class="max-w-48 truncate px-3 py-2 text-gray-600 dark:text-neutral-300"
+            >
               {{ query.domain }}
             </td>
-            <td class="max-w-48 truncate px-3 py-2 text-gray-600 dark:text-neutral-300">
+            <td
+              class="max-w-48 truncate px-3 py-2 text-gray-600 dark:text-neutral-300"
+            >
               {{ query.answer }}
             </td>
-            <td class="whitespace-nowrap px-3 py-2 text-gray-600 dark:text-neutral-300">
+            <td
+              class="whitespace-nowrap px-3 py-2 text-gray-600 dark:text-neutral-300"
+            >
               {{ query.reason }}
             </td>
-            <td class="whitespace-nowrap px-3 py-2 text-gray-600 dark:text-neutral-300">
+            <td
+              class="whitespace-nowrap px-3 py-2 text-gray-600 dark:text-neutral-300"
+            >
               {{ query.duration != null ? `${query.duration}ms` : '-' }}
             </td>
             <td class="px-3 py-2">
@@ -126,7 +158,11 @@
                     : 'bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-400',
                 ]"
               >
-                {{ query.blocked ? t('admin.dnsHistory.blocked') : t('admin.dnsHistory.allowed') }}
+                {{
+                  query.blocked
+                    ? t('admin.dnsHistory.blocked')
+                    : t('admin.dnsHistory.allowed')
+                }}
               </span>
             </td>
           </tr>
@@ -141,7 +177,9 @@
     >
       <span>
         {{ t('admin.dnsHistory.showing') }}
-        {{ (store.offset ?? 0) + 1 }}&ndash;{{ Math.min((store.offset ?? 0) + (store.limit ?? 50), store.total) }}
+        {{ (store.offset ?? 0) + 1 }}&ndash;{{
+          Math.min((store.offset ?? 0) + (store.limit ?? 50), store.total)
+        }}
         {{ t('admin.dnsHistory.of') }}
         {{ store.total.toLocaleString() }}
       </span>
@@ -200,13 +238,10 @@ const sortOptions = computed(() => [
 ]);
 
 // Watch filters and fetch history
-watch(
-  [selectedClient, selectedBlocked, selectedSort],
-  () => {
-    store.setOffset(0);
-    fetchHistory();
-  }
-);
+watch([selectedClient, selectedBlocked, selectedSort], () => {
+  store.setOffset(0);
+  fetchHistory();
+});
 
 // Debounce search input
 watch(searchQuery, () => {

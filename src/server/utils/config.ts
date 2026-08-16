@@ -20,7 +20,6 @@ export const OLD_ENV = {
 };
 
 const detectAwg = async (): Promise<'awg' | 'wg'> => {
-  /** TODO: delete on next major version */
   if (process.env.EXPERIMENTAL_AWG === 'true') {
     const OVERRIDE_AUTO_AWG = process.env.OVERRIDE_AUTO_AWG?.toLowerCase();
 

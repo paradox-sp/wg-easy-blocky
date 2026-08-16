@@ -68,13 +68,6 @@ export const useClientsStore = defineStore('Clients', () => {
       // We know that this can't be undefined
       const clientPersist = clientsPersist.value[client.id]!;
 
-      // Debug
-      /* client.transferRx =
-        clientPersist.transferRxPrevious + Math.random() * 1000;
-      client.transferTx =
-        clientPersist.transferTxPrevious + Math.random() * 1000;
-      client.latestHandshakeAt = new Date().toISOString(); */
-
       clientPersist.transferRxCurrent =
         (client.transferRx ?? 0) - clientPersist.transferRxPrevious;
 

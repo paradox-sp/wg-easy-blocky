@@ -179,6 +179,21 @@ import { encodeQR } from 'qr';
 
 const authStore = useAuthStore();
 
+type TotpResponse =
+  | { success: boolean; type: 'setup'; key: string; uri: string }
+  | { success: boolean; type: 'created' }
+  | { success: boolean; type: 'deleted' };
+
+function useMeSubmit<T>(
+  path: string,
+  revert: (success: boolean, data: T | undefined) => Promise<void>
+) {
+  return useSubmit(
+    (data) => $fetch(path, { method: 'post', body: data }) as Promise<T>,
+    { revert }
+  );
+}
+
 const { data: authMethods } = await useFetch('/api/auth/methods');
 
 const name = ref(authStore.userData?.name);
@@ -192,18 +207,7 @@ const oauthProviderInfo = computed(() => {
   return authMethods.value?.providers?.[authStore.userData.oauthProvider];
 });
 
-const _submit = useSubmit(
-  (data) =>
-    $fetch(`/api/me`, {
-      method: 'post',
-      body: data,
-    }),
-  {
-    revert: () => {
-      return authStore.update();
-    },
-  }
-);
+const _submit = useMeSubmit('/api/me', () => authStore.update());
 
 function submit() {
   return _submit({ name: name.value, email: email.value });
@@ -213,21 +217,12 @@ const currentPassword = ref('');
 const newPassword = ref('');
 const confirmPassword = ref('');
 
-const _updatePassword = useSubmit(
-  (data) =>
-    $fetch(`/api/me/password`, {
-      method: 'post',
-      body: data,
-    }),
-  {
-    revert: async () => {
-      currentPassword.value = '';
-      newPassword.value = '';
-      confirmPassword.value = '';
-      return authStore.update();
-    },
-  }
-);
+const _updatePassword = useMeSubmit('/api/me/password', async () => {
+  currentPassword.value = '';
+  newPassword.value = '';
+  confirmPassword.value = '';
+  return authStore.update();
+});
 
 function updatePassword() {
   return _updatePassword({
@@ -239,24 +234,18 @@ function updatePassword() {
 
 const twofa = ref<{ key: string; qrcode: string } | null>(null);
 
-const _setup2fa = useSubmit(
-  (data) =>
-    $fetch(`/api/me/totp`, {
-      method: 'post',
-      body: data,
-    }),
-  {
-    revert: async (success, data) => {
-      if (success && data?.type === 'setup') {
-        const qrcode = encodeQR(data.uri, 'svg', {
-          ecc: 'high',
-          scale: 4,
-          encoding: 'byte',
-        });
-        const svg = new Blob([qrcode], { type: 'image/svg+xml' });
-        twofa.value = { key: data.key, qrcode: URL.createObjectURL(svg) };
-      }
-    },
+const _setup2fa = useMeSubmit<TotpResponse>(
+  '/api/me/totp',
+  async (success, data) => {
+    if (success && data?.type === 'setup') {
+      const qrcode = encodeQR(data.uri, 'svg', {
+        ecc: 'high',
+        scale: 4,
+        encoding: 'byte',
+      });
+      const svg = new Blob([qrcode], { type: 'image/svg+xml' });
+      twofa.value = { key: data.key, qrcode: URL.createObjectURL(svg) };
+    }
   }
 );
 
@@ -268,20 +257,14 @@ async function setup2fa() {
 
 const code = ref<string>('');
 
-const _enable2fa = useSubmit(
-  (data) =>
-    $fetch(`/api/me/totp`, {
-      method: 'post',
-      body: data,
-    }),
-  {
-    revert: async (success, data) => {
-      if (success && data?.type === 'created') {
-        authStore.update();
-        twofa.value = null;
-        code.value = '';
-      }
-    },
+const _enable2fa = useMeSubmit<TotpResponse>(
+  '/api/me/totp',
+  async (success, data) => {
+    if (success && data?.type === 'created') {
+      authStore.update();
+      twofa.value = null;
+      code.value = '';
+    }
   }
 );
 
@@ -294,19 +277,13 @@ async function enable2fa() {
 
 const disable2faPassword = ref('');
 
-const _disable2fa = useSubmit(
-  (data) =>
-    $fetch(`/api/me/totp`, {
-      method: 'post',
-      body: data,
-    }),
-  {
-    revert: async (success, data) => {
-      if (success && data?.type === 'deleted') {
-        authStore.update();
-        disable2faPassword.value = '';
-      }
-    },
+const _disable2fa = useMeSubmit<TotpResponse>(
+  '/api/me/totp',
+  async (success, data) => {
+    if (success && data?.type === 'deleted') {
+      authStore.update();
+      disable2faPassword.value = '';
+    }
   }
 );
 
@@ -317,18 +294,9 @@ async function disable2fa() {
   });
 }
 
-const _unlinkOauth = useSubmit(
-  (data) =>
-    $fetch(`/api/auth/unlink`, {
-      method: 'post',
-      body: data,
-    }),
-  {
-    revert: async () => {
-      return authStore.update();
-    },
-  }
-);
+const _unlinkOauth = useMeSubmit('/api/auth/unlink', async () => {
+  return authStore.update();
+});
 
 async function unlinkOauth() {
   return _unlinkOauth({});

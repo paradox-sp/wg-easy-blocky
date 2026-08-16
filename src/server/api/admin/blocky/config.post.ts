@@ -7,19 +7,23 @@ import { definePermissionEventHandler } from '#server/utils/handler';
 import { validateZod } from '#server/utils/types';
 import { BlockyConfigUpdateSchema } from '#db/repositories/blockyConfig/types';
 
-export default definePermissionEventHandler('admin', 'any', async ({ event }) => {
-  const data = await readValidatedBody(
-    event,
-    validateZod(BlockyConfigUpdateSchema, event)
-  );
+export default definePermissionEventHandler(
+  'admin',
+  'any',
+  async ({ event }) => {
+    const data = await readValidatedBody(
+      event,
+      validateZod(BlockyConfigUpdateSchema, event)
+    );
 
-  await Database.blockyConfig.updateConfig(data);
-  await Blocky.reloadConfig();
+    await Database.blockyConfig.updateConfig(data);
+    await Blocky.reloadConfig();
 
-  if (BLOCKY_ENV.ENABLED) {
-    const status = await Blocky.waitUntilReady();
-    return { success: true, status };
+    if (BLOCKY_ENV.ENABLED) {
+      const status = await Blocky.waitUntilReady();
+      return { success: true, status };
+    }
+
+    return { success: true };
   }
-
-  return { success: true };
-});
+);

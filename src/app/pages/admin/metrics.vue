@@ -30,7 +30,9 @@
     </div>
 
     <!-- Peer Statistics Table -->
-    <div class="mb-6 overflow-hidden rounded-lg bg-white shadow-sm dark:bg-neutral-700">
+    <div
+      class="mb-6 overflow-hidden rounded-lg bg-white shadow-sm dark:bg-neutral-700"
+    >
       <div class="border-b border-gray-100 px-4 py-3 dark:border-neutral-600">
         <h3 class="text-lg font-medium text-gray-800 dark:text-neutral-100">
           {{ t('admin.metrics.peerStats') }}
@@ -45,7 +47,9 @@
       </div>
 
       <div
-        v-else-if="!store.dashboard?.peerStats || store.dashboard.peerStats.length === 0"
+        v-else-if="
+          !store.dashboard?.peerStats || store.dashboard.peerStats.length === 0
+        "
         class="py-8 text-center text-gray-500 dark:text-neutral-400"
       >
         {{ t('admin.dnsHistory.noResults') }}
@@ -55,16 +59,24 @@
         <table class="w-full text-left text-sm">
           <thead>
             <tr class="border-b border-gray-100 dark:border-neutral-600">
-              <th class="px-4 py-2 font-medium text-gray-500 dark:text-neutral-400">
+              <th
+                class="px-4 py-2 font-medium text-gray-500 dark:text-neutral-400"
+              >
                 {{ t('admin.metrics.peer') }}
               </th>
-              <th class="px-4 py-2 font-medium text-gray-500 dark:text-neutral-400">
+              <th
+                class="px-4 py-2 font-medium text-gray-500 dark:text-neutral-400"
+              >
                 {{ t('admin.metrics.rx') }}
               </th>
-              <th class="px-4 py-2 font-medium text-gray-500 dark:text-neutral-400">
+              <th
+                class="px-4 py-2 font-medium text-gray-500 dark:text-neutral-400"
+              >
                 {{ t('admin.metrics.tx') }}
               </th>
-              <th class="px-4 py-2 font-medium text-gray-500 dark:text-neutral-400">
+              <th
+                class="px-4 py-2 font-medium text-gray-500 dark:text-neutral-400"
+              >
                 {{ t('admin.metrics.lastHandshake') }}
               </th>
             </tr>
@@ -75,17 +87,29 @@
               :key="i"
               class="border-b border-gray-50 last:border-b-0 dark:border-neutral-600/50"
             >
-              <td class="whitespace-nowrap px-4 py-2 text-gray-600 dark:text-neutral-300">
+              <td
+                class="whitespace-nowrap px-4 py-2 text-gray-600 dark:text-neutral-300"
+              >
                 {{ peer.name }}
               </td>
-              <td class="whitespace-nowrap px-4 py-2 text-gray-600 dark:text-neutral-300">
+              <td
+                class="whitespace-nowrap px-4 py-2 text-gray-600 dark:text-neutral-300"
+              >
                 {{ formatBytes(peer.rx) }}
               </td>
-              <td class="whitespace-nowrap px-4 py-2 text-gray-600 dark:text-neutral-300">
+              <td
+                class="whitespace-nowrap px-4 py-2 text-gray-600 dark:text-neutral-300"
+              >
                 {{ formatBytes(peer.tx) }}
               </td>
-              <td class="whitespace-nowrap px-4 py-2 text-gray-600 dark:text-neutral-300">
-                {{ peer.lastHandshake ? formatTimestamp(peer.lastHandshake) : t('admin.metrics.never') }}
+              <td
+                class="whitespace-nowrap px-4 py-2 text-gray-600 dark:text-neutral-300"
+              >
+                {{
+                  peer.lastHandshake
+                    ? formatTimestamp(peer.lastHandshake)
+                    : t('admin.metrics.never')
+                }}
               </td>
             </tr>
           </tbody>

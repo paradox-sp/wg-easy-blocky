@@ -31,11 +31,9 @@ function createPreparedStatement(db: DBType) {
 }
 
 export class BlockyConfigService {
-  #db: DBType;
   #statements: ReturnType<typeof createPreparedStatement>;
 
   constructor(db: DBType) {
-    this.#db = db;
     this.#statements = createPreparedStatement(db);
   }
 

@@ -1,4 +1,5 @@
 import { getRequestURL, proxyRequest } from 'h3';
+
 import { VICTORIA_METRICS_ENV } from '#server/utils/config';
 import { definePermissionEventHandler } from '#server/utils/handler';
 

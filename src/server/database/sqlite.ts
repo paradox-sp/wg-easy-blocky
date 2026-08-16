@@ -127,10 +127,13 @@ async function initialSetup(db: DBServiceType) {
 
 async function disableIpv6(db: DBType) {
   // This should match the initial value migration
-  const postUpMatch =
-    ' ip6tables -t nat -A POSTROUTING -s {{ipv6Cidr}} -o {{device}} -j MASQUERADE; ip6tables -A INPUT -p udp -m udp --dport {{port}} -j ACCEPT; ip6tables -A FORWARD -i wg0 -j ACCEPT; ip6tables -A FORWARD -o wg0 -j ACCEPT;';
-  const postDownMatch =
-    ' ip6tables -t nat -D POSTROUTING -s {{ipv6Cidr}} -o {{device}} -j MASQUERADE; ip6tables -D INPUT -p udp -m udp --dport {{port}} -j ACCEPT; ip6tables -D FORWARD -i wg0 -j ACCEPT; ip6tables -D FORWARD -o wg0 -j ACCEPT;';
+  const matches = {
+    postUp:
+      ' ip6tables -t nat -A POSTROUTING -s {{ipv6Cidr}} -o {{device}} -j MASQUERADE; ip6tables -A INPUT -p udp -m udp --dport {{port}} -j ACCEPT; ip6tables -A FORWARD -i wg0 -j ACCEPT; ip6tables -A FORWARD -o wg0 -j ACCEPT;',
+    postDown:
+      ' ip6tables -t nat -D POSTROUTING -s {{ipv6Cidr}} -o {{device}} -j MASQUERADE; ip6tables -D INPUT -p udp -m udp --dport {{port}} -j ACCEPT; ip6tables -D FORWARD -i wg0 -j ACCEPT; ip6tables -D FORWARD -o wg0 -j ACCEPT;',
+  } as const;
+  const labels = { postUp: 'Post Up', postDown: 'Post Down' } as const;
 
   await db.transaction(async (tx) => {
     const hooks = await tx.query.hooks.findFirst({
@@ -141,31 +144,28 @@ async function disableIpv6(db: DBType) {
       throw new Error('Hooks not found');
     }
 
-    if (hooks.postUp.includes(postUpMatch)) {
-      DB_DEBUG('Disabling IPv6 in Post Up hooks...');
-      await tx
-        .update(schema.hooks)
-        .set({
-          postUp: hooks.postUp.replace(postUpMatch, ''),
-          postDown: hooks.postDown.replace(postDownMatch, ''),
-        })
-        .where(eq(schema.hooks.id, 'wg0'))
-        .execute();
-    } else {
-      DB_DEBUG('IPv6 Post Up hooks already disabled, skipping...');
+    const next = { postUp: hooks.postUp, postDown: hooks.postDown };
+    let changed = false;
+
+    for (const [key, match] of Object.entries(matches) as [
+      keyof typeof matches,
+      string,
+    ][]) {
+      if (hooks[key].includes(match)) {
+        DB_DEBUG(`Disabling IPv6 in ${labels[key]} hooks...`);
+        next[key] = hooks[key].replace(match, '');
+        changed = true;
+      } else {
+        DB_DEBUG(`IPv6 ${labels[key]} hooks already disabled, skipping...`);
+      }
     }
-    if (hooks.postDown.includes(postDownMatch)) {
-      DB_DEBUG('Disabling IPv6 in Post Down hooks...');
+
+    if (changed) {
       await tx
         .update(schema.hooks)
-        .set({
-          postUp: hooks.postUp.replace(postUpMatch, ''),
-          postDown: hooks.postDown.replace(postDownMatch, ''),
-        })
+        .set(next)
         .where(eq(schema.hooks.id, 'wg0'))
         .execute();
-    } else {
-      DB_DEBUG('IPv6 Post Down hooks already disabled, skipping...');
     }
   });
 }
