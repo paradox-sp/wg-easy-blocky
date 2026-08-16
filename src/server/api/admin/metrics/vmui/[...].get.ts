@@ -1,19 +1,10 @@
-import { getRequestURL, proxyRequest } from 'h3';
 import VictoriaMetrics from '#server/utils/victoriaMetrics';
-import { definePermissionEventHandler } from '#server/utils/handler';
+import { defineMetricsProxyHandler } from '#server/utils/metricsProxy';
 
-export default definePermissionEventHandler(
-  'admin',
-  'any',
-  async ({ event }) => {
-    const vmuiUrl = VictoriaMetrics.getVMUIUrl();
-    const url = getRequestURL(event);
-    const targetUrl = `${vmuiUrl}${url.pathname.replace('/api/admin/metrics/vmui', '')}${url.search}`;
-
-    return proxyRequest(event, targetUrl, {
-      headers: {
-        'X-Forwarded-Host': event.node.req.headers.host || '',
-      },
-    });
-  }
-);
+export default defineMetricsProxyHandler({
+  prefix: '/api/admin/metrics/vmui',
+  baseUrl: VictoriaMetrics.getVMUIUrl,
+  headers: (event) => ({
+    'X-Forwarded-Host': event.node.req.headers.host || '',
+  }),
+});

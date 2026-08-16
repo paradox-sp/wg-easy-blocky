@@ -3,69 +3,23 @@
     <FormElement @submit.prevent="save">
       <FormGroup>
         <FormHeading>{{ t('admin.blocky.upstream') }}</FormHeading>
-        <div class="col-span-full flex flex-col gap-2">
-          <div
-            v-for="(item, i) in form.upstream"
-            :key="i"
-            class="flex flex-row items-center gap-1"
-          >
-            <BaseInput
-              v-model="form.upstream[i]"
-              class="flex-1"
-              type="text"
-            />
-            <BaseSecondaryButton
-              type="button"
-              class="shrink-0 rounded-lg px-2 py-2"
-              @click="removeItem('upstream', i)"
-            >
-              <IconsDelete class="size-4" />
-            </BaseSecondaryButton>
-          </div>
-          <div class="mt-1">
-            <BasePrimaryButton
-              type="button"
-              class="rounded-lg"
-              @click="addItem('upstream')"
-            >
-              <IconsPlus class="mr-1 size-4" />
-              {{ t('admin.blocky.addUpstream') }}
-            </BasePrimaryButton>
-          </div>
-        </div>
+        <AdminStringListField
+          :items="form.upstream"
+          :add-label="t('admin.blocky.addUpstream')"
+          @add="addItem('upstream')"
+          @remove="removeItem('upstream', $event)"
+          @update="setItem('upstream', $event)"
+        />
       </FormGroup>
       <FormGroup>
         <FormHeading>{{ t('admin.blocky.bootstrapDns') }}</FormHeading>
-        <div class="col-span-full flex flex-col gap-2">
-          <div
-            v-for="(item, i) in form.bootstrapDns"
-            :key="i"
-            class="flex flex-row items-center gap-1"
-          >
-            <BaseInput
-              v-model="form.bootstrapDns[i]"
-              class="flex-1"
-              type="text"
-            />
-            <BaseSecondaryButton
-              type="button"
-              class="shrink-0 rounded-lg px-2 py-2"
-              @click="removeItem('bootstrapDns', i)"
-            >
-              <IconsDelete class="size-4" />
-            </BaseSecondaryButton>
-          </div>
-          <div class="mt-1">
-            <BasePrimaryButton
-              type="button"
-              class="rounded-lg"
-              @click="addItem('bootstrapDns')"
-            >
-              <IconsPlus class="mr-1 size-4" />
-              {{ t('admin.blocky.addBootstrapDns') }}
-            </BasePrimaryButton>
-          </div>
-        </div>
+        <AdminStringListField
+          :items="form.bootstrapDns"
+          :add-label="t('admin.blocky.addBootstrapDns')"
+          @add="addItem('bootstrapDns')"
+          @remove="removeItem('bootstrapDns', $event)"
+          @update="setItem('bootstrapDns', $event)"
+        />
       </FormGroup>
       <FormGroup>
         <FormHeading>{{ t('admin.blocky.blockingMode') }}</FormHeading>
@@ -78,69 +32,23 @@
       </FormGroup>
       <FormGroup>
         <FormHeading>{{ t('admin.blocky.blockLists') }}</FormHeading>
-        <div class="col-span-full flex flex-col gap-2">
-          <div
-            v-for="(item, i) in form.blocking.blockLists"
-            :key="i"
-            class="flex flex-row items-center gap-1"
-          >
-            <BaseInput
-              v-model="form.blocking.blockLists[i]"
-              class="flex-1"
-              type="text"
-            />
-            <BaseSecondaryButton
-              type="button"
-              class="shrink-0 rounded-lg px-2 py-2"
-              @click="removeItem('blocking.blockLists', i)"
-            >
-              <IconsDelete class="size-4" />
-            </BaseSecondaryButton>
-          </div>
-          <div class="mt-1">
-            <BasePrimaryButton
-              type="button"
-              class="rounded-lg"
-              @click="addItem('blocking.blockLists')"
-            >
-              <IconsPlus class="mr-1 size-4" />
-              {{ t('admin.blocky.addBlockList') }}
-            </BasePrimaryButton>
-          </div>
-        </div>
+        <AdminStringListField
+          :items="form.blocking.blockLists"
+          :add-label="t('admin.blocky.addBlockList')"
+          @add="addItem('blocking.blockLists')"
+          @remove="removeItem('blocking.blockLists', $event)"
+          @update="setItem('blocking.blockLists', $event)"
+        />
       </FormGroup>
       <FormGroup>
         <FormHeading>{{ t('admin.blocky.allowLists') }}</FormHeading>
-        <div class="col-span-full flex flex-col gap-2">
-          <div
-            v-for="(item, i) in form.blocking.allowLists"
-            :key="i"
-            class="flex flex-row items-center gap-1"
-          >
-            <BaseInput
-              v-model="form.blocking.allowLists[i]"
-              class="flex-1"
-              type="text"
-            />
-            <BaseSecondaryButton
-              type="button"
-              class="shrink-0 rounded-lg px-2 py-2"
-              @click="removeItem('blocking.allowLists', i)"
-            >
-              <IconsDelete class="size-4" />
-            </BaseSecondaryButton>
-          </div>
-          <div class="mt-1">
-            <BasePrimaryButton
-              type="button"
-              class="rounded-lg"
-              @click="addItem('blocking.allowLists')"
-            >
-              <IconsPlus class="mr-1 size-4" />
-              {{ t('admin.blocky.addAllowList') }}
-            </BasePrimaryButton>
-          </div>
-        </div>
+        <AdminStringListField
+          :items="form.blocking.allowLists"
+          :add-label="t('admin.blocky.addAllowList')"
+          @add="addItem('blocking.allowLists')"
+          @remove="removeItem('blocking.allowLists', $event)"
+          @update="setItem('blocking.allowLists', $event)"
+        />
       </FormGroup>
       <FormGroup>
         <FormHeading>{{ t('form.actions') }}</FormHeading>
@@ -228,7 +136,11 @@ onMounted(async () => {
   populateForm();
 });
 
-type ArrayField = 'upstream' | 'bootstrapDns' | 'blocking.blockLists' | 'blocking.allowLists';
+type ArrayField =
+  | 'upstream'
+  | 'bootstrapDns'
+  | 'blocking.blockLists'
+  | 'blocking.allowLists';
 
 function getArray(field: ArrayField): string[] {
   if (field === 'upstream') return form.upstream;
@@ -243,6 +155,13 @@ function addItem(field: ArrayField) {
 
 function removeItem(field: ArrayField, index: number) {
   getArray(field).splice(index, 1);
+}
+
+function setItem(
+  field: ArrayField,
+  { index, value }: { index: number; value: string }
+) {
+  getArray(field)[index] = value;
 }
 
 function filterEmpty(arr: string[]): string[] {

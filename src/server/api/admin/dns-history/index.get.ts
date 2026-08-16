@@ -1,6 +1,6 @@
 import { getValidatedQuery } from 'h3';
 
-import DnsQuery from '#server/utils/dnsHistory';
+import DnsQuery from '#db/repositories/dnsQuery/service';
 import { definePermissionEventHandler } from '#server/utils/handler';
 import { validateZod } from '#server/utils/types';
 import { DnsHistoryQuerySchema } from '#db/repositories/dnsQuery/types';

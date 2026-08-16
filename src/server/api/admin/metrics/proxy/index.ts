@@ -1,15 +1,7 @@
-import { getRequestURL, proxyRequest } from 'h3';
 import { VICTORIA_METRICS_ENV } from '#server/utils/config';
-import { definePermissionEventHandler } from '#server/utils/handler';
+import { defineMetricsProxyHandler } from '#server/utils/metricsProxy';
 
-export default definePermissionEventHandler(
-  'admin',
-  'any',
-  async ({ event }) => {
-    const vmUrl = VICTORIA_METRICS_ENV.URL;
-    const url = getRequestURL(event);
-    const targetUrl = `${vmUrl}${url.pathname.replace('/api/admin/metrics/proxy', '')}${url.search}`;
-
-    return proxyRequest(event, targetUrl);
-  }
-);
+export default defineMetricsProxyHandler({
+  prefix: '/api/admin/metrics/proxy',
+  baseUrl: VICTORIA_METRICS_ENV.URL,
+});

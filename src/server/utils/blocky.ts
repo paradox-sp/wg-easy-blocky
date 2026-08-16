@@ -1,10 +1,13 @@
 import { execSync } from 'node:child_process';
 import { writeFile } from 'node:fs/promises';
+import { createError } from 'h3';
 import { createDebug } from 'obug';
 
 import { BLOCKY_ENV } from '#server/utils/config';
 import Database from '#server/utils/Database';
 import type { BlockyConfigSchema } from '#db/repositories/blockyConfig/types';
+
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 const BLOCKY_DEBUG = createDebug('Blocky');
 
@@ -64,6 +67,23 @@ class Blocky {
     } catch {
       return null;
     }
+  }
+
+  /**
+   * Poll the Blocky API until it responds again after a config reload
+   * (restarting the service briefly takes it offline). Throws when Blocky
+   * does not come back within the poll window.
+   */
+  async waitUntilReady(): Promise<BlockyStatus> {
+    for (let attempt = 0; attempt < 10; attempt++) {
+      const status = await this.getStatus();
+      if (status) return status;
+      await sleep(500);
+    }
+    throw createError({
+      statusCode: 500,
+      statusMessage: 'Blocky did not come back up after config reload',
+    });
   }
 
   async getMetrics(): Promise<string | null> {

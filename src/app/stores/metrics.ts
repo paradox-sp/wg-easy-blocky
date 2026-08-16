@@ -31,27 +31,22 @@ export const useMetricsStore = defineStore('Metrics', () => {
     peerStats: [],
   });
   const vmuiUrl = ref<string>('/api/admin/metrics/vmui/');
-  const loading = ref(false);
-  const error = ref<string | null>(null);
+  const { loading, error, run } = useApiState();
 
   async function fetchDashboard() {
-    loading.value = true;
-    error.value = null;
-    try {
-      const data = await $fetch<{ success: boolean } & DashboardData>(
-        '/api/admin/metrics/dashboard'
-      );
+    const data = await run(
+      async () =>
+        await $fetch<{ success: boolean } & DashboardData>(
+          '/api/admin/metrics/dashboard'
+        ),
+      'Failed to fetch dashboard metrics'
+    );
+    if (data) {
       dashboard.value = {
         vpnTraffic: data.vpnTraffic ?? null,
         dnsStats: data.dnsStats ?? null,
         peerStats: data.peerStats ?? [],
       };
-    } catch (err) {
-      error.value =
-        (err as { data?: { message?: string } } | null)?.data?.message ||
-        'Failed to fetch dashboard metrics';
-    } finally {
-      loading.value = false;
     }
   }
 

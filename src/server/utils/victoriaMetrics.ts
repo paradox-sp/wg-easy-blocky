@@ -22,20 +22,33 @@ class VictoriaMetrics {
     this.#baseUrl = VICTORIA_METRICS_ENV.URL;
   }
 
-  async query(query: string, time?: number): Promise<QueryResult | null> {
+  /**
+   * Fetch a path from the VictoriaMetrics HTTP API. Returns null when the
+   * integration is disabled or the upstream is unreachable/failing.
+   */
+  async #request(
+    path: string,
+    params?: URLSearchParams
+  ): Promise<Response | null> {
     if (!VICTORIA_METRICS_ENV.ENABLED) return null;
 
     try {
-      const params = new URLSearchParams({ query });
-      if (time) params.append('time', String(time));
-
-      const response = await fetch(`${this.#baseUrl}/api/v1/query?${params}`);
+      const query = params ? `?${params}` : '';
+      const response = await fetch(`${this.#baseUrl}${path}${query}`);
       if (!response.ok) return null;
-      return await response.json();
+      return response;
     } catch (error) {
-      VM_DEBUG('Query failed:', error);
+      VM_DEBUG(`Request to ${path} failed:`, error);
       return null;
     }
+  }
+
+  async query(query: string, time?: number): Promise<QueryResult | null> {
+    const params = new URLSearchParams({ query });
+    if (time) params.append('time', String(time));
+
+    const response = await this.#request('/api/v1/query', params);
+    return response ? await response.json() : null;
   }
 
   async queryRange(
@@ -44,37 +57,20 @@ class VictoriaMetrics {
     end: number,
     step: number
   ): Promise<QueryResult | null> {
-    if (!VICTORIA_METRICS_ENV.ENABLED) return null;
+    const params = new URLSearchParams({
+      query,
+      start: String(start),
+      end: String(end),
+      step: String(step),
+    });
 
-    try {
-      const params = new URLSearchParams({
-        query,
-        start: String(start),
-        end: String(end),
-        step: String(step),
-      });
-
-      const response = await fetch(
-        `${this.#baseUrl}/api/v1/query_range?${params}`
-      );
-      if (!response.ok) return null;
-      return await response.json();
-    } catch (error) {
-      VM_DEBUG('Query range failed:', error);
-      return null;
-    }
+    const response = await this.#request('/api/v1/query_range', params);
+    return response ? await response.json() : null;
   }
 
   async getMetrics(): Promise<string | null> {
-    if (!VICTORIA_METRICS_ENV.ENABLED) return null;
-
-    try {
-      const response = await fetch(`${this.#baseUrl}/metrics`);
-      if (!response.ok) return null;
-      return await response.text();
-    } catch {
-      return null;
-    }
+    const response = await this.#request('/metrics');
+    return response ? await response.text() : null;
   }
 
   getVMUIUrl(): string {
