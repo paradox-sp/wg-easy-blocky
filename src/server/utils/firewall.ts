@@ -46,6 +46,17 @@ function sanitizeComment(clientId: number, clientName: string): string {
 }
 
 /**
+ * Run an iptables command and, when IPv6 is enabled, the equivalent
+ * ip6tables command (with every occurrence of the executable swapped).
+ */
+async function execDualStack(cmd: string, enableIpv6: boolean) {
+  await exec(cmd);
+  if (enableIpv6) {
+    await exec(cmd.replaceAll('iptables', 'ip6tables'));
+  }
+}
+
+/**
  * Parse a firewall entry string into its components.
  * Supports formats:
  * - IP: "10.0.0.1" or "2001:db8::1"
@@ -170,21 +181,17 @@ export const firewall = {
     );
 
     // Create chain if not exists (iptables returns error if exists, so we ignore)
-    await exec(`iptables -N ${CHAIN_NAME} 2>/dev/null || true`);
-    if (enableIpv6) {
-      await exec(`ip6tables -N ${CHAIN_NAME} 2>/dev/null || true`);
-    }
+    await execDualStack(
+      `iptables -N ${CHAIN_NAME} 2>/dev/null || true`,
+      enableIpv6
+    );
 
     // Ensure chain is referenced from FORWARD (if not already)
     // Insert at position 1 to process before generic ACCEPT rules
-    await exec(
-      `iptables -C FORWARD -i ${interfaceName} -j ${CHAIN_NAME} 2>/dev/null || iptables -I FORWARD 1 -i ${interfaceName} -j ${CHAIN_NAME}`
+    await execDualStack(
+      `iptables -C FORWARD -i ${interfaceName} -j ${CHAIN_NAME} 2>/dev/null || iptables -I FORWARD 1 -i ${interfaceName} -j ${CHAIN_NAME}`,
+      enableIpv6
     );
-    if (enableIpv6) {
-      await exec(
-        `ip6tables -C FORWARD -i ${interfaceName} -j ${CHAIN_NAME} 2>/dev/null || ip6tables -I FORWARD 1 -i ${interfaceName} -j ${CHAIN_NAME}`
-      );
-    }
   },
 
   /**
@@ -192,10 +199,10 @@ export const firewall = {
    */
   async flushChain(enableIpv6: boolean): Promise<void> {
     FW_DEBUG(`Flushing firewall chain ${CHAIN_NAME}`);
-    await exec(`iptables -F ${CHAIN_NAME} 2>/dev/null || true`);
-    if (enableIpv6) {
-      await exec(`ip6tables -F ${CHAIN_NAME} 2>/dev/null || true`);
-    }
+    await execDualStack(
+      `iptables -F ${CHAIN_NAME} 2>/dev/null || true`,
+      enableIpv6
+    );
   },
 
   /**
@@ -284,10 +291,7 @@ export const firewall = {
       }
 
       // Add final DROP for any traffic not explicitly allowed
-      await exec(`iptables -A ${CHAIN_NAME} -j DROP`);
-      if (enableIpv6) {
-        await exec(`ip6tables -A ${CHAIN_NAME} -j DROP`);
-      }
+      await execDualStack(`iptables -A ${CHAIN_NAME} -j DROP`, enableIpv6);
 
       FW_DEBUG('Firewall rules rebuilt successfully');
     } finally {
@@ -312,22 +316,20 @@ export const firewall = {
     FW_DEBUG(`Removing firewall filtering for interface ${interfaceName}`);
 
     // Remove jump rules from FORWARD chain
-    await exec(
-      `iptables -D FORWARD -i ${interfaceName} -j ${CHAIN_NAME} 2>/dev/null || true`
+    await execDualStack(
+      `iptables -D FORWARD -i ${interfaceName} -j ${CHAIN_NAME} 2>/dev/null || true`,
+      enableIpv6
     );
-    if (enableIpv6) {
-      await exec(
-        `ip6tables -D FORWARD -i ${interfaceName} -j ${CHAIN_NAME} 2>/dev/null || true`
-      );
-    }
 
     // Flush and delete the chain
-    await exec(`iptables -F ${CHAIN_NAME} 2>/dev/null || true`);
-    await exec(`iptables -X ${CHAIN_NAME} 2>/dev/null || true`);
-    if (enableIpv6) {
-      await exec(`ip6tables -F ${CHAIN_NAME} 2>/dev/null || true`);
-      await exec(`ip6tables -X ${CHAIN_NAME} 2>/dev/null || true`);
-    }
+    await execDualStack(
+      `iptables -F ${CHAIN_NAME} 2>/dev/null || true`,
+      enableIpv6
+    );
+    await execDualStack(
+      `iptables -X ${CHAIN_NAME} 2>/dev/null || true`,
+      enableIpv6
+    );
   },
 
   /**

@@ -64,7 +64,24 @@ export class ClientService {
   /**
    * Returns all clients without sensitive data
    */
-  async getAllPublic({ filter, sort }: ClientQueryType) {
+  async getAllPublic(query: ClientQueryType) {
+    return this.#queryPublicClients(query);
+  }
+
+  /**
+   * Returns all clients without sensitive data belonging to user
+   */
+  async getAllForUser(userId: ID, query: ClientQueryType) {
+    return this.#queryPublicClients(query, userId);
+  }
+
+  /**
+   * Query clients without sensitive data, optionally scoped to a user.
+   */
+  async #queryPublicClients(
+    { filter, sort }: ClientQueryType,
+    userId?: ID
+  ) {
     const filters = [];
 
     if (filter?.trim()) {
@@ -83,50 +100,10 @@ export class ClientService {
         with: {
           oneTimeLink: true,
         },
-        where: and(...filters),
-        columns: {
-          privateKey: false,
-          preSharedKey: false,
-        },
-        orderBy: (t, { asc, desc }) => {
-          if (sort === 'desc') {
-            return desc(t.name);
-          } else {
-            // default to asc
-            return asc(t.name);
-          }
-        },
-      })
-      .execute();
-
-    return result.map((row) => ({
-      ...row,
-      createdAt: new Date(row.createdAt),
-      updatedAt: new Date(row.updatedAt),
-    }));
-  }
-
-  /**
-   * Returns all clients without sensitive data belonging to user
-   */
-  async getAllForUser(userId: ID, { filter, sort }: ClientQueryType) {
-    const filters = [];
-
-    if (filter?.trim()) {
-      const filterPattern = `%${filter?.toLowerCase()}%`;
-      filters.push(
-        or(
-          like(client.name, filterPattern),
-          like(client.ipv4Address, filterPattern),
-          like(client.ipv6Address, filterPattern)
-        )
-      );
-    }
-
-    const result = await this.#db.query.client
-      .findMany({
-        where: and(eq(client.userId, userId), ...filters),
-        with: { oneTimeLink: true },
+        where: and(
+          ...(userId ? [eq(client.userId, userId)] : []),
+          ...filters
+        ),
         columns: {
           privateKey: false,
           preSharedKey: false,

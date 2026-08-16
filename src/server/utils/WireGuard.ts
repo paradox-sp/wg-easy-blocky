@@ -90,21 +90,9 @@ class WireGuard {
   }
 
   async getClientsForUser(userId: ID, query: ClientQueryType) {
-    const wgInterface = await Database.interfaces.get();
-
-    const dbClients = await Database.clients.getAllForUser(userId, query);
-
-    const clients = dbClients.map((client) => ({
-      ...client,
-      latestHandshakeAt: null as Date | null,
-      endpoint: null as string | null,
-      transferRx: null as number | null,
-      transferTx: null as number | null,
-    }));
-
-    // Loop WireGuard status
-    const dump = await wg.dump(wgInterface.name);
-    return mergeClientStatuses(clients, dump);
+    return this.#getClientsWithStatus(
+      await Database.clients.getAllForUser(userId, query)
+    );
   }
 
   async dumpByPublicKey(publicKey: string) {
@@ -119,9 +107,19 @@ class WireGuard {
   }
 
   async getAllClients(query: ClientQueryType = {}) {
-    const wgInterface = await Database.interfaces.get();
+    return this.#getClientsWithStatus(
+      await Database.clients.getAllPublic(query)
+    );
+  }
 
-    const dbClients = await Database.clients.getAllPublic(query);
+  /**
+   * Merge the live WireGuard status into client rows, seeding the status
+   * fields with null for clients without a current connection.
+   */
+  async #getClientsWithStatus(
+    dbClients: Awaited<ReturnType<typeof Database.clients.getAllPublic>>
+  ) {
+    const wgInterface = await Database.interfaces.get();
 
     const clients = dbClients.map((client) => ({
       ...client,
