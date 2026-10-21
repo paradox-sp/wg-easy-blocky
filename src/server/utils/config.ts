@@ -38,6 +38,12 @@ const detectAwg = async (): Promise<'awg' | 'wg'> => {
   } else return 'wg';
 };
 
+function parsePositiveInteger(value: string | undefined, fallback: number) {
+  if (!value) return fallback;
+  const parsed = Number.parseInt(value, 10);
+  return Number.isSafeInteger(parsed) && parsed >= 1_000 ? parsed : fallback;
+}
+
 const oauthProviders = process.env.OAUTH_PROVIDERS?.split(',')
   .map((v) => v.trim())
   .filter((v) => isValidOauthProvider(v))
@@ -125,6 +131,11 @@ export const VICTORIA_METRICS_ENV = {
   HTTP_LISTEN_ADDR: process.env.VM_HTTP_LISTEN_ADDR ?? ':8428',
   /** Bearer token for scraping the wg-easy /metrics endpoint (must match the wg-easy metrics password when one is set) */
   METRICS_TOKEN: process.env.VM_METRICS_TOKEN,
+  /** Interval used by the dashboard poller and server-side aggregate cache */
+  DASHBOARD_POLL_INTERVAL_MS: parsePositiveInteger(
+    process.env.NUXT_PUBLIC_DASHBOARD_POLL_INTERVAL_MS,
+    10_000
+  ),
 };
 
 function assertEnv<T extends string>(env: T) {

@@ -17,13 +17,9 @@ export default definePermissionEventHandler(
     );
 
     await Database.blockyConfig.updateConfig(data);
-    await Blocky.reloadConfig();
+    const config = await Blocky.reloadConfig();
+    const status = BLOCKY_ENV.ENABLED ? await Blocky.waitUntilReady() : null;
 
-    if (BLOCKY_ENV.ENABLED) {
-      const status = await Blocky.waitUntilReady();
-      return { success: true, status };
-    }
-
-    return { success: true };
+    return { success: true, config, status };
   }
 );

@@ -5,12 +5,8 @@ import { definePermissionEventHandler } from '#server/utils/handler';
 
 export default definePermissionEventHandler('admin', 'any', async () => {
   await Database.blockyConfig.resetToDefaults();
-  await Blocky.reloadConfig();
+  const config = await Blocky.reloadConfig();
+  const status = BLOCKY_ENV.ENABLED ? await Blocky.waitUntilReady() : null;
 
-  if (BLOCKY_ENV.ENABLED) {
-    const status = await Blocky.waitUntilReady();
-    return { success: true, status };
-  }
-
-  return { success: true };
+  return { success: true, config, status };
 });

@@ -1,6 +1,11 @@
 import { createError, defineEventHandler, readValidatedBody } from 'h3';
 
 import Database from '#server/utils/Database';
+import {
+  assertAuthenticationAllowed,
+  clearAuthenticationFailures,
+  recordAuthenticationFailure,
+} from '#server/utils/authThrottle';
 import { logSecurityEvent } from '#server/utils/securityLogger';
 import { useWGSession } from '#server/utils/session';
 import { assertUnreachable, validateZod } from '#server/utils/types';
@@ -20,13 +25,16 @@ export default defineEventHandler(async (event) => {
       statusMessage: 'No pending authentication',
     });
   }
-  if (new Date() > new Date(pendingLogin.expires_at)) {
+  if (Date.now() > pendingLogin.expires_at) {
     await session.update({
       pendingLogin: undefined,
     });
 
     return { status: 'PENDING_LOGIN_EXPIRED' as const };
   }
+
+  const throttleIdentity = String(pendingLogin.userId);
+  assertAuthenticationAllowed(event, '2fa', throttleIdentity);
 
   const totpStatus = await Database.users.validateTotpCode(
     pendingLogin.userId,
@@ -36,6 +44,7 @@ export default defineEventHandler(async (event) => {
   switch (totpStatus) {
     case 'INVALID_TOTP_CODE':
       logSecurityEvent(event, '2fa');
+      recordAuthenticationFailure(event, '2fa', throttleIdentity);
       return { status: 'INVALID_TOTP_CODE' as const };
     case 'USER_DISABLED':
       throw createError({
@@ -47,6 +56,8 @@ export default defineEventHandler(async (event) => {
     default:
       assertUnreachable(totpStatus);
   }
+
+  clearAuthenticationFailures(event, '2fa', throttleIdentity);
 
   await session.update({
     userId: pendingLogin.userId,

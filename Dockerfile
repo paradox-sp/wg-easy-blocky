@@ -180,6 +180,7 @@ ENV BLOCKY_LOG_DIR=/data/blocky/logs
 # VictoriaMetrics configuration
 ENV VM_DATA_DIR=/data/victoriametrics
 ENV VM_RETENTION_PERIOD=30d
+ENV VM_SCRAPE_INTERVAL=30s
 ENV VM_HTTP_LISTEN_ADDR=:8428
 # Bearer token for scraping the wg-easy /metrics endpoint (must match the wg-easy metrics password if one is set)
 ENV VM_METRICS_TOKEN=

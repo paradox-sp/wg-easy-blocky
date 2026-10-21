@@ -166,6 +166,11 @@ export default defineNuxtConfig({
       useCookie: true,
     },
   },
+  runtimeConfig: {
+    public: {
+      dashboardPollIntervalMs: 10_000,
+    },
+  },
   nitro: {
     imports: {
       autoImport: false,

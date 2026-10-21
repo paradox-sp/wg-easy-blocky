@@ -2,8 +2,14 @@ import { createError, getHeader, getSession, useSession } from 'h3';
 import type { H3Event } from 'h3';
 
 import Database from '#server/utils/Database';
+import {
+  assertAuthenticationAllowed,
+  clearAuthenticationFailures,
+  recordAuthenticationFailure,
+} from '#server/utils/authThrottle';
 import { WG_ENV } from '#server/utils/config';
 import { isPasswordValid } from '#server/utils/password';
+import { logSecurityEvent } from '#server/utils/securityLogger';
 import type { ID } from '#server/utils/types';
 import type { UserType } from '#db/repositories/user/types';
 
@@ -93,6 +99,8 @@ export async function getCurrentUser(event: H3Event) {
       });
     }
 
+    assertAuthenticationAllowed(event, 'password', username);
+
     const foundUser = await Database.users.getByUsername(username);
 
     // always check to avoid timing attack
@@ -101,11 +109,15 @@ export async function getCurrentUser(event: H3Event) {
 
     // can't login through basic auth if 2fa enabled
     if (!foundUser || !passwordValid || foundUser.totpVerified) {
+      logSecurityEvent(event, 'password', username);
+      recordAuthenticationFailure(event, 'password', username);
       throw createError({
         statusCode: 401,
         statusMessage: 'Session failed',
       });
     }
+
+    clearAuthenticationFailures(event, 'password', username);
     user = foundUser;
   } else {
     throw createError({

@@ -3,6 +3,7 @@ import { ref } from 'vue';
 export function useApiState() {
   const loading = ref(false);
   const error = ref<string | null>(null);
+  let activeRequests = 0;
 
   /**
    * Run an async API action with shared loading/error bookkeeping.
@@ -15,6 +16,7 @@ export function useApiState() {
     fallbackMessage: string,
     rethrow = false
   ): Promise<T | undefined> {
+    activeRequests += 1;
     loading.value = true;
     error.value = null;
     try {
@@ -26,7 +28,8 @@ export function useApiState() {
       if (rethrow) throw err;
       return undefined;
     } finally {
-      loading.value = false;
+      activeRequests -= 1;
+      loading.value = activeRequests > 0;
     }
   }
 

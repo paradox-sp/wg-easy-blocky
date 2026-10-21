@@ -1,6 +1,11 @@
 import { createError, defineEventHandler, readValidatedBody } from 'h3';
 
 import Database from '#server/utils/Database';
+import {
+  assertAuthenticationAllowed,
+  clearAuthenticationFailures,
+  recordAuthenticationFailure,
+} from '#server/utils/authThrottle';
 import { SERVER_DEBUG, WG_ENV } from '#server/utils/config';
 import { logSecurityEvent } from '#server/utils/securityLogger';
 import { useWGSession } from '#server/utils/session';
@@ -20,9 +25,9 @@ export default defineEventHandler(async (event) => {
     validateZod(UserLoginSchema, event)
   );
 
-  const result = await Database.users.login(username, password);
+  assertAuthenticationAllowed(event, 'password', username);
 
-  const session = await useWGSession(event, remember);
+  const result = await Database.users.login(username, password);
 
   // TODO: add localization support
 
@@ -30,11 +35,14 @@ export default defineEventHandler(async (event) => {
     switch (result.error) {
       case 'INCORRECT_CREDENTIALS':
         logSecurityEvent(event, 'password', username);
+        recordAuthenticationFailure(event, 'password', username);
         throw createError({
           statusCode: 401,
           statusMessage: 'Invalid username or password',
         });
-      case 'TOTP_REQUIRED':
+      case 'TOTP_REQUIRED': {
+        clearAuthenticationFailures(event, 'password', username);
+        const session = await useWGSession(event, remember);
         await session.update({
           pendingLogin: {
             type: 'password',
@@ -45,6 +53,7 @@ export default defineEventHandler(async (event) => {
           },
         });
         return { status: 'TOTP_REQUIRED' as const };
+      }
       case 'INVALID_TOTP_CODE':
         return { status: 'INVALID_TOTP_CODE' as const };
       case 'USER_DISABLED':
@@ -61,7 +70,11 @@ export default defineEventHandler(async (event) => {
     assertUnreachable(result);
   }
 
+  clearAuthenticationFailures(event, 'password', username);
+
   const user = result.user;
+
+  const session = await useWGSession(event, remember);
 
   const data = await session.update({
     userId: user.id,

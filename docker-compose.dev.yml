@@ -36,6 +36,8 @@ services:
       - INIT_PASSWORD=Qweasdyxcv!2
       - INSECURE=true
       - DEBUG=Server,WireGuard,Database,CMD,Firewall
+      - NUXT_PUBLIC_DASHBOARD_POLL_INTERVAL_MS=${NUXT_PUBLIC_DASHBOARD_POLL_INTERVAL_MS:-10000}
+      - VM_SCRAPE_INTERVAL=${VM_SCRAPE_INTERVAL:-30s}
       # Bearer token for scraping /metrics (must match the wg-easy metrics password if one is configured)
       - VM_METRICS_TOKEN=${VM_METRICS_TOKEN}
     develop:

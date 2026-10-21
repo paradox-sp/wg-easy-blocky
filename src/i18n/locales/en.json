@@ -94,7 +94,9 @@
     "insecure": "You can't log in with an insecure connection. Use HTTPS.",
     "2faRequired": "Two Factor Authentication is required",
     "2faWrong": "Two Factor Authentication is wrong",
-    "loginExpired": "Login expired. Try again"
+    "loginExpired": "Login expired. Try again",
+    "welcomeBack": "Sign in to manage your VPN and services.",
+    "protected": "Sign-in attempts are protected by automatic rate limiting."
   },
   "client": {
     "empty": "There are no clients yet.",
@@ -168,6 +170,22 @@
     "add": "Add"
   },
   "admin": {
+    "overview": {
+      "title": "Overview",
+      "description": "Choose an area to configure or inspect.",
+      "intro": "Manage VPN settings and integrated services from one place."
+    },
+    "navigation": {
+      "system": "System",
+      "services": "Services",
+      "generalDescription": "Sessions and metrics endpoint settings.",
+      "configDescription": "Client connection defaults and public endpoint.",
+      "interfaceDescription": "WireGuard interface, firewall, and AmneziaWG settings.",
+      "hooksDescription": "Commands run during interface lifecycle events.",
+      "blockyDescription": "DNS filtering, upstream resolvers, and block lists.",
+      "dnsHistoryDescription": "Search recent DNS queries and blocking decisions.",
+      "metricsDescription": "VPN, DNS, peer statistics, and VictoriaMetrics."
+    },
     "general": {
       "sessionTimeout": "Session Timeout",
       "sessionTimeoutDesc": "Session duration for Remember Me (seconds)",
@@ -207,7 +225,6 @@
       "firewallEnabled": "Enable Per-Client Firewall",
       "firewallEnabledDesc": "Restrict client traffic to specific destination IPs using iptables. When enabled, each client can be configured with allowed destinations."
     },
-    "introText": "Welcome to the admin panel.\n\nHere you can manage the general settings, the configuration, the interface settings and the hooks.\n\nStart by choosing one of the sections in the sidebar.",
     "blocky": {
       "title": "Blocky DNS",
       "description": "Configure the Blocky DNS resolver for ad blocking and DNS filtering.",

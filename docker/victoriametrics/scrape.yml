@@ -2,7 +2,7 @@
 # This config is used by VictoriaMetrics to scrape metrics from wg-easy and Blocky
 
 global:
-  scrape_interval: 15s
+  scrape_interval: ${VM_SCRAPE_INTERVAL}
   external_labels:
     cluster: 'wg-easy-blocky'
     environment: 'production'

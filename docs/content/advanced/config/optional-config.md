@@ -43,6 +43,20 @@ request protocol remains controlled by `INSECURE`. Invalid addresses prevent
 wg-easy from starting so that configuration errors are not silently ignored.
 Restart the container after changing this setting.
 
+## Authentication Throttling
+
+Password, HTTP Basic, and two-factor authentication are protected by an
+in-memory adaptive throttle. Five failures for one identity and client IP, or
+20 failures from one client IP across identities, trigger a 30-second cooldown.
+Each failure after a cooldown doubles the delay up to 15 minutes. Failure
+counters expire after 15 minutes without another failure and successful
+authentication clears the relevant counters.
+
+Throttle state is local to the running process and resets when the container
+restarts. When a reverse proxy is used, configure `TRUSTED_PROXIES` correctly
+so throttling uses the forwarded client address instead of grouping every
+request under the proxy address.
+
 ## WireGuard Interface
 
 Set `WG_INTERFACE` to specify a custom interface name, useful if you are running multiple wg-easy instances on the same host with `network_mode: host`:

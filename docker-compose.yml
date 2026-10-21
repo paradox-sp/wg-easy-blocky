@@ -132,6 +132,10 @@ services:
       # --- VictoriaMetrics ------------------------------------------------------
       # Set to false to disable the VictoriaMetrics integration
       VM_ENABLED: "${VM_ENABLED:-true}"
+      # Client/status and metrics dashboard refresh interval in milliseconds
+      NUXT_PUBLIC_DASHBOARD_POLL_INTERVAL_MS: "${NUXT_PUBLIC_DASHBOARD_POLL_INTERVAL_MS:-10000}"
+      # How often VictoriaMetrics scrapes the bundled services
+      VM_SCRAPE_INTERVAL: "${VM_SCRAPE_INTERVAL:-30s}"
       # Base URL of the VictoriaMetrics HTTP API (in-container)
       VM_URL: "${VM_URL:-http://127.0.0.1:8428}"
       # Base URL of the VMUI web interface

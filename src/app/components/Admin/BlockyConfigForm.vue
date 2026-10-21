@@ -130,11 +130,7 @@ function populateForm() {
   form.blocking.allowLists = [...(store.config.blocking?.allowLists ?? [])];
 }
 
-// Load config on mount and populate form
-onMounted(async () => {
-  await store.fetchConfig();
-  populateForm();
-});
+watch(() => store.config, populateForm, { immediate: true });
 
 type ArrayField =
   'upstream' | 'bootstrapDns' | 'blocking.blockLists' | 'blocking.allowLists';
@@ -187,8 +183,5 @@ async function save() {
 
 async function confirmReset() {
   await store.resetConfig();
-  // Reload form from new config
-  await store.fetchConfig();
-  populateForm();
 }
 </script>

@@ -3,7 +3,8 @@ import type { H3Event } from 'h3';
 import { WG_ENV } from '#server/utils/config';
 import { getTrustedRequestIP } from '#server/utils/trustedProxy';
 
-type SecurityEvent = 'password' | '2fa' | 'one-time-link';
+type SecurityEvent =
+  'password' | 'password-throttled' | '2fa' | '2fa-throttled' | 'one-time-link';
 
 export function logSecurityEvent(
   event: H3Event,

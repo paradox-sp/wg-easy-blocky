@@ -11,7 +11,6 @@
         :info="info"
       />
 
-      <!-- Divider -->
       <div
         v-if="authMethods.oauthEnabled && !authMethods.passwordDisabled"
         class="flex items-center gap-2"
@@ -24,31 +23,36 @@
       </div>
     </div>
 
-    <!-- Classic Login Form -->
     <form
       v-if="!authMethods?.passwordDisabled"
-      class="flex flex-col gap-5"
+      class="flex flex-col gap-4"
       @submit.prevent="submit"
     >
-      <BaseInput
-        v-model="username"
-        type="text"
-        :placeholder="$t('general.username')"
-        autocomplete="username"
-        autofocus
-        name="username"
-      />
+      <label class="flex flex-col gap-1.5" for="username">
+        <span class="text-sm font-medium">{{ $t('general.username') }}</span>
+        <BaseInput
+          id="username"
+          v-model="username"
+          type="text"
+          autocomplete="username"
+          autofocus
+          name="username"
+        />
+      </label>
 
-      <BaseInput
-        v-model="password"
-        type="password"
-        name="password"
-        :placeholder="$t('general.password')"
-        autocomplete="current-password"
-      />
+      <label class="flex flex-col gap-1.5" for="password">
+        <span class="text-sm font-medium">{{ $t('general.password') }}</span>
+        <BaseInput
+          id="password"
+          v-model="password"
+          type="password"
+          name="password"
+          autocomplete="current-password"
+        />
+      </label>
 
       <label
-        class="flex gap-2 whitespace-nowrap"
+        class="flex items-center gap-2 whitespace-nowrap"
         :title="$t('login.rememberMeDesc')"
       >
         <BaseSwitch v-model="remember" />
@@ -56,8 +60,8 @@
       </label>
 
       <button
-        class="rounded bg-red-800 py-2 text-sm text-white shadow transition hover:bg-red-700 disabled:cursor-not-allowed disabled:bg-gray-200 dark:bg-red-800 dark:text-white dark:hover:bg-red-700 disabled:dark:bg-neutral-800"
-        :disabled="!password || !username"
+        class="mt-1 min-h-10 rounded-lg bg-red-800 px-4 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-700 focus:ring-offset-2 disabled:cursor-not-allowed disabled:bg-gray-200 dark:bg-red-800 dark:text-white dark:hover:bg-red-700 dark:focus:ring-offset-neutral-700 disabled:dark:bg-neutral-800"
+        :disabled="!password || !username || authenticating"
       >
         <IconsLoading v-if="authenticating" class="mx-auto w-5 animate-spin" />
         <span v-else>{{ $t('login.signIn') }}</span>

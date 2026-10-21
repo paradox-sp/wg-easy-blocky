@@ -11,6 +11,12 @@ export interface BlockyStatus {
   disabledGroups?: string[];
 }
 
+type BlockyMutationResponse = {
+  success: boolean;
+  config: BlockyConfigSchema;
+  status: BlockyStatus | null;
+};
+
 export const useBlockyStore = defineStore('Blocky', () => {
   const config = ref<BlockyConfigSchema | null>(null);
   const status = ref<BlockyStatus | null>(null);
@@ -30,12 +36,15 @@ export const useBlockyStore = defineStore('Blocky', () => {
   async function updateConfig(data: BlockyConfigUpdateType) {
     await run(
       async () => {
-        await $fetch('/api/admin/blocky/config', {
-          method: 'POST',
-          body: data,
-        });
-        await fetchConfig();
-        await fetchStatus();
+        const response = await $fetch<BlockyMutationResponse>(
+          '/api/admin/blocky/config',
+          {
+            method: 'POST',
+            body: data,
+          }
+        );
+        config.value = response.config;
+        status.value = response.status;
       },
       'Failed to update Blocky config',
       true
@@ -45,11 +54,14 @@ export const useBlockyStore = defineStore('Blocky', () => {
   async function resetConfig() {
     await run(
       async () => {
-        await $fetch('/api/admin/blocky/reset', {
-          method: 'POST',
-        });
-        await fetchConfig();
-        await fetchStatus();
+        const response = await $fetch<BlockyMutationResponse>(
+          '/api/admin/blocky/reset',
+          {
+            method: 'POST',
+          }
+        );
+        config.value = response.config;
+        status.value = response.status;
       },
       'Failed to reset Blocky config',
       true

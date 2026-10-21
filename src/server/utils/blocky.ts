@@ -11,6 +11,7 @@ import type { BlockyConfigSchema } from '#db/repositories/blockyConfig/types';
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 const BLOCKY_DEBUG = createDebug('Blocky');
+const BLOCKY_REQUEST_TIMEOUT_MS = 1_000;
 
 interface BlockyStatus {
   enabled: boolean;
@@ -18,7 +19,7 @@ interface BlockyStatus {
   disabledGroups?: string[];
 }
 
-class Blocky {
+export class Blocky {
   #baseUrl: string;
   #config: BlockyConfigSchema | null = null;
 
@@ -32,10 +33,11 @@ class Blocky {
     return this.#config;
   }
 
-  async reloadConfig(): Promise<void> {
+  async reloadConfig(): Promise<BlockyConfigSchema> {
     this.#config = null;
     const config = await this.getConfig();
     await this.pushConfig(config);
+    return config;
   }
 
   async pushConfig(config: BlockyConfigSchema): Promise<void> {
@@ -62,7 +64,9 @@ class Blocky {
     if (!BLOCKY_ENV.ENABLED) return null;
 
     try {
-      const response = await fetch(`${this.#baseUrl}/api/blocking/status`);
+      const response = await fetch(`${this.#baseUrl}/api/blocking/status`, {
+        signal: AbortSignal.timeout(BLOCKY_REQUEST_TIMEOUT_MS),
+      });
       if (!response.ok) return null;
       return await response.json();
     } catch {
@@ -91,7 +95,9 @@ class Blocky {
     if (!BLOCKY_ENV.ENABLED) return null;
 
     try {
-      const response = await fetch(`${this.#baseUrl}/metrics`);
+      const response = await fetch(`${this.#baseUrl}/metrics`, {
+        signal: AbortSignal.timeout(BLOCKY_REQUEST_TIMEOUT_MS),
+      });
       if (!response.ok) return null;
       return await response.text();
     } catch {

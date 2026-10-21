@@ -9,6 +9,7 @@ const mockVictoriaMetricsEnv = vi.hoisted(() => ({
   DATA_DIR: '/data/victoriametrics',
   RETENTION_PERIOD: '30d',
   HTTP_LISTEN_ADDR: ':8428',
+  DASHBOARD_POLL_INTERVAL_MS: 10_000,
 }));
 
 // The singleton reads VICTORIA_METRICS_ENV.URL at construction time and
@@ -45,11 +46,14 @@ function vectorResult(
 beforeEach(() => {
   fetchMock.mockReset();
   mockVictoriaMetricsEnv.ENABLED = true;
+  mockVictoriaMetricsEnv.DASHBOARD_POLL_INTERVAL_MS = 10_000;
+  VictoriaMetrics.clearDashboardCache();
   vi.stubGlobal('fetch', fetchMock);
 });
 
 afterEach(() => {
   vi.unstubAllGlobals();
+  vi.restoreAllMocks();
 });
 
 describe('VictoriaMetrics', () => {
@@ -75,7 +79,19 @@ describe('VictoriaMetrics', () => {
       body
     );
     expect(fetchMock).toHaveBeenCalledWith(
-      'http://127.0.0.1:8428/api/v1/query?query=up&time=1720000000'
+      'http://127.0.0.1:8428/api/v1/query?query=up&time=1720000000',
+      { signal: expect.any(AbortSignal) }
+    );
+  });
+
+  test('preserves an explicit Unix epoch query time', async () => {
+    fetchMock.mockImplementation(async () => okJson(vectorResult([])));
+
+    await VictoriaMetrics.query('up', 0);
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      'http://127.0.0.1:8428/api/v1/query?query=up&time=0',
+      { signal: expect.any(AbortSignal) }
     );
   });
 
@@ -93,15 +109,20 @@ describe('VictoriaMetrics', () => {
     await VictoriaMetrics.queryRange('rate(x[5m])', 1720000000, 1720000100, 15);
 
     expect(fetchMock).toHaveBeenCalledWith(
-      expect.stringContaining('/api/v1/query_range')
+      expect.stringContaining('/api/v1/query_range'),
+      { signal: expect.any(AbortSignal) }
     );
     expect(fetchMock).toHaveBeenCalledWith(
-      expect.stringContaining('start=1720000000')
+      expect.stringContaining('start=1720000000'),
+      { signal: expect.any(AbortSignal) }
     );
     expect(fetchMock).toHaveBeenCalledWith(
-      expect.stringContaining('end=1720000100')
+      expect.stringContaining('end=1720000100'),
+      { signal: expect.any(AbortSignal) }
     );
-    expect(fetchMock).toHaveBeenCalledWith(expect.stringContaining('step=15'));
+    expect(fetchMock).toHaveBeenCalledWith(expect.stringContaining('step=15'), {
+      signal: expect.any(AbortSignal),
+    });
   });
 
   test('getMetrics returns the raw text body', async () => {
@@ -112,11 +133,34 @@ describe('VictoriaMetrics', () => {
     await expect(VictoriaMetrics.getMetrics()).resolves.toBe(
       'go_gc_duration_seconds 0.001'
     );
-    expect(fetchMock).toHaveBeenCalledWith('http://127.0.0.1:8428/metrics');
+    expect(fetchMock).toHaveBeenCalledWith('http://127.0.0.1:8428/metrics', {
+      signal: expect.any(AbortSignal),
+    });
   });
 
   test('getVMUIUrl returns the configured VMUI URL', () => {
     expect(VictoriaMetrics.getVMUIUrl()).toBe('http://127.0.0.1:8428/vmui');
+  });
+
+  test('deduplicates and caches dashboard queries for one polling interval', async () => {
+    let now = 1_000;
+    vi.spyOn(Date, 'now').mockImplementation(() => now);
+    fetchMock.mockImplementation(async () => okJson(vectorResult([])));
+
+    const [first, second] = await Promise.all([
+      VictoriaMetrics.getDashboard(),
+      VictoriaMetrics.getDashboard(),
+    ]);
+
+    expect(first).toEqual(second);
+    expect(fetchMock).toHaveBeenCalledTimes(7);
+
+    await VictoriaMetrics.getDashboard();
+    expect(fetchMock).toHaveBeenCalledTimes(7);
+
+    now += mockVictoriaMetricsEnv.DASHBOARD_POLL_INTERVAL_MS + 1;
+    await VictoriaMetrics.getDashboard();
+    expect(fetchMock).toHaveBeenCalledTimes(14);
   });
 
   test('getVpnTraffic parses rx and tx from parallel queries', async () => {

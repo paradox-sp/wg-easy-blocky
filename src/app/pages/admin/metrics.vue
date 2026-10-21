@@ -1,14 +1,5 @@
 <template>
   <main>
-    <div class="mb-6">
-      <h2 class="text-xl font-medium text-gray-800 dark:text-neutral-100">
-        {{ t('admin.metrics.title') }}
-      </h2>
-      <p class="mt-1 text-sm text-gray-500 dark:text-neutral-400">
-        {{ t('admin.metrics.description') }}
-      </p>
-    </div>
-
     <div class="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
       <UiStatCard
         :title="t('admin.metrics.vpnRx')"

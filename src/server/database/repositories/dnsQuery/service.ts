@@ -26,6 +26,7 @@ const DNS_DEBUG = createDebug('DNSHistory');
  * as null/absent. A query is blocked when ResponseType === 'BLOCKED'.
  */
 const COLUMN_COUNT = 11;
+const DNS_HISTORY_CACHE_IDLE_MS = 5 * 60 * 1_000;
 
 /**
  * Minimal RFC 4180-aware parser for a tab-delimited CSV document.
@@ -100,15 +101,60 @@ function parseCsvRows(content: string): string[][] {
   return rows;
 }
 
+function parseLogRows(content: string): string[][] {
+  const rows = parseCsvRows(content);
+  let validRows = 0;
+  for (const row of rows) {
+    if (row.length >= COLUMN_COUNT) {
+      rows[validRows] = row;
+      validRows += 1;
+    }
+  }
+  rows.length = validRows;
+  return rows;
+}
+
+interface LogFileState {
+  path: string;
+  signature: string;
+}
+
+interface ParsedLogFile {
+  signature: string;
+  rows: string[][];
+}
+
 class DnsQueryService {
   /**
-   * Parse cache keyed by a cheap signature of the log directory state
-   * (`name:size:mtimeMs` per file). Blocky appends to today's file
-   * continuously, so the signature changes as soon as new rows are written
-   * and the cache self-invalidates naturally — no TTL required.
+   * Keep parsed rows per log file so an append to today's active file does not
+   * re-read every retained historical file. The aggregate cache avoids
+   * rebuilding the combined row list while the directory signature is stable.
+   * Replacing the map after each successful scan also releases deleted files.
    */
+  #fileCache = new Map<string, ParsedLogFile>();
   #cacheSignature: string | null = null;
   #cacheRows: string[][] = [];
+  #cacheLoad: Promise<string[][]> | null = null;
+  #cacheExpiryTimer: NodeJS.Timeout | undefined;
+
+  #clearCache(): void {
+    clearTimeout(this.#cacheExpiryTimer);
+    this.#cacheExpiryTimer = undefined;
+    this.#fileCache.clear();
+    this.#cacheSignature = null;
+    this.#cacheRows = [];
+  }
+
+  #scheduleCacheExpiry(): void {
+    clearTimeout(this.#cacheExpiryTimer);
+    this.#cacheExpiryTimer = setTimeout(() => {
+      this.#cacheExpiryTimer = undefined;
+      this.#fileCache.clear();
+      this.#cacheSignature = null;
+      this.#cacheRows = [];
+    }, DNS_HISTORY_CACHE_IDLE_MS);
+    this.#cacheExpiryTimer.unref();
+  }
 
   /**
    * Resolve the Blocky query log directory at call time so tests can mock
@@ -137,13 +183,36 @@ class DnsQueryService {
   }
 
   /**
-   * Read and parse every `*.log` file in the Blocky query log directory,
-   * reusing a cached parse when the directory state is unchanged.
+   * Scan every `*.log` file and parse only files whose metadata changed,
+   * reusing the aggregate rows while the directory state is unchanged.
    * Never throws: any failure degrades to an empty row list.
    */
   async #readLogRows(): Promise<string[][]> {
+    if (this.#cacheLoad) {
+      return this.#cacheLoad;
+    }
+
+    const load = this.#loadLogRows();
+    this.#cacheLoad = load;
+    try {
+      const rows = await load;
+      if (this.#cacheSignature !== null) {
+        this.#scheduleCacheExpiry();
+      }
+      return rows;
+    } finally {
+      if (this.#cacheLoad === load) {
+        this.#cacheLoad = null;
+      }
+    }
+  }
+
+  async #loadLogRows(): Promise<string[][]> {
     const dir = this.#getLogDir();
-    if (!dir) return [];
+    if (!dir) {
+      this.#clearCache();
+      return [];
+    }
 
     try {
       const { signature, files } = await this.#scanLogFiles(dir);
@@ -152,23 +221,31 @@ class DnsQueryService {
       }
 
       const rows: string[][] = [];
+      const nextFileCache = new Map<string, ParsedLogFile>();
       for (const file of files) {
-        const content = await readFile(join(dir, file), 'utf8');
-        for (const row of parseCsvRows(content)) {
-          if (row.length >= COLUMN_COUNT) {
-            rows.push(row);
-          }
+        const cached = this.#fileCache.get(file.path);
+        const fileRows =
+          cached?.signature === file.signature
+            ? cached.rows
+            : parseLogRows(await readFile(file.path, 'utf8'));
+
+        nextFileCache.set(file.path, {
+          signature: file.signature,
+          rows: fileRows,
+        });
+        for (const row of fileRows) {
+          rows.push(row);
         }
       }
 
+      this.#fileCache = nextFileCache;
       this.#cacheSignature = signature;
       this.#cacheRows = rows;
       return rows;
     } catch (error) {
       // Any fs failure: drop the cache so a later successful read is not
       // shadowed by stale rows, then degrade to empty.
-      this.#cacheSignature = null;
-      this.#cacheRows = [];
+      this.#clearCache();
       DNS_DEBUG('Failed to read Blocky query logs:', error);
       return [];
     }
@@ -176,22 +253,30 @@ class DnsQueryService {
 
   /**
    * Build a cheap signature of the log directory state without reading file
-   * contents: the sorted `*.log` names plus each file's size and mtime.
-   * Returns the signature and the sorted file list (reused on a cache miss).
+   * contents. Each file carries its own signature so unchanged parsed files
+   * can be reused when another file changes.
    */
   async #scanLogFiles(
     dir: string
-  ): Promise<{ signature: string; files: string[] }> {
+  ): Promise<{ signature: string; files: LogFileState[] }> {
     const entries = await readdir(dir);
-    const files = entries.filter((name) => name.endsWith('.log')).sort();
+    const names = entries.filter((name) => name.endsWith('.log')).sort();
 
-    const parts: string[] = [];
-    for (const file of files) {
-      const s = await stat(join(dir, file));
-      parts.push(`${file}:${s.size}:${s.mtimeMs}`);
-    }
+    const files = await Promise.all(
+      names.map(async (name) => {
+        const path = join(dir, name);
+        const fileStat = await stat(path);
+        return {
+          path,
+          signature: `${name}:${fileStat.size}:${fileStat.mtimeMs}`,
+        };
+      })
+    );
 
-    return { signature: parts.join('|'), files };
+    return {
+      signature: `${dir}\0${files.map((file) => file.signature).join('|')}`,
+      files,
+    };
   }
 
   /**
@@ -223,53 +308,44 @@ class DnsQueryService {
     // raw CSV rows only) and enrichment always reflects the current VPN
     // clients without ever changing the cache signature.
     const ipToName = await this.#loadClientNameMap();
+    const filter = query.filter?.trim()
+      ? query.filter.toLowerCase()
+      : undefined;
+    const client = query.client?.trim() ? query.client : undefined;
+    const domain = query.domain?.trim()
+      ? query.domain.toLowerCase()
+      : undefined;
+    const start = query.startDate ? new Date(query.startDate) : null;
+    const validStart = start && !Number.isNaN(start.getTime()) ? start : null;
+    const end = query.endDate ? new Date(query.endDate) : null;
+    const validEnd = end && !Number.isNaN(end.getTime()) ? end : null;
 
-    let queries: DnsQueryPublic[] = [];
+    // Apply every filter while converting rows. This avoids allocating a new
+    // full-size array for each active filter on large DNS histories.
+    const queries: DnsQueryPublic[] = [];
     let id = 0;
     for (const row of rows) {
       const item = this.#rowToQuery(row, id, ipToName);
-      if (item) {
-        queries.push(item);
-        id += 1;
+      if (!item) continue;
+      id += 1;
+
+      if (
+        filter &&
+        !item.client.toLowerCase().includes(filter) &&
+        !item.domain.toLowerCase().includes(filter) &&
+        !(item.answer ?? '').toLowerCase().includes(filter) &&
+        !(item.reason ?? '').toLowerCase().includes(filter)
+      ) {
+        continue;
       }
-    }
-
-    if (query.filter?.trim()) {
-      const filter = query.filter.toLowerCase();
-      queries = queries.filter(
-        (q) =>
-          q.client.toLowerCase().includes(filter) ||
-          q.domain.toLowerCase().includes(filter) ||
-          (q.answer ?? '').toLowerCase().includes(filter) ||
-          (q.reason ?? '').toLowerCase().includes(filter)
-      );
-    }
-
-    if (query.client?.trim()) {
-      queries = queries.filter((q) => q.client === query.client);
-    }
-
-    if (query.domain?.trim()) {
-      const domain = query.domain.toLowerCase();
-      queries = queries.filter((q) => q.domain.toLowerCase().includes(domain));
-    }
-
-    if (query.blocked !== undefined) {
-      queries = queries.filter((q) => q.blocked === query.blocked);
-    }
-
-    if (query.startDate) {
-      const start = new Date(query.startDate);
-      if (!Number.isNaN(start.getTime())) {
-        queries = queries.filter((q) => q.timestamp >= start);
+      if (client && item.client !== client) continue;
+      if (domain && !item.domain.toLowerCase().includes(domain)) continue;
+      if (query.blocked !== undefined && item.blocked !== query.blocked) {
+        continue;
       }
-    }
-
-    if (query.endDate) {
-      const end = new Date(query.endDate);
-      if (!Number.isNaN(end.getTime())) {
-        queries = queries.filter((q) => q.timestamp <= end);
-      }
+      if (validStart && item.timestamp < validStart) continue;
+      if (validEnd && item.timestamp > validEnd) continue;
+      queries.push(item);
     }
 
     queries.sort((a, b) =>

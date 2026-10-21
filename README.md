@@ -110,15 +110,19 @@ When Blocky is enabled, generated client configs use the WireGuard server's tunn
 
 ### VictoriaMetrics Environment Variables
 
-| Env                   | Default                      | Description                                                                                       |
-| --------------------- | ---------------------------- | ------------------------------------------------------------------------------------------------- |
-| `VM_ENABLED`          | `true`                       | Enables the VictoriaMetrics service                                                               |
-| `VM_URL`              | `http://127.0.0.1:8428`      | VictoriaMetrics API URL                                                                           |
-| `VMUI_URL`            | `http://127.0.0.1:8428/vmui` | VMUI dashboard URL                                                                                |
-| `VM_DATA_DIR`         | `/data/victoriametrics`      | Directory for metrics data                                                                        |
-| `VM_RETENTION_PERIOD` | `30d`                        | Metrics retention period                                                                          |
-| `VM_HTTP_LISTEN_ADDR` | `:8428`                      | VictoriaMetrics HTTP listen address                                                               |
-| `VM_METRICS_TOKEN`    | `—`                          | Bearer token for scraping wg-easy's `/metrics` (must match the wg-easy metrics password when set) |
+| Env                                      | Default                      | Description                                                                                       |
+| ---------------------------------------- | ---------------------------- | ------------------------------------------------------------------------------------------------- |
+| `VM_ENABLED`                             | `true`                       | Enables the VictoriaMetrics service                                                               |
+| `NUXT_PUBLIC_DASHBOARD_POLL_INTERVAL_MS` | `10000`                      | Client/status and metrics dashboard refresh interval in milliseconds (minimum `1000`)             |
+| `VM_SCRAPE_INTERVAL`                     | `30s`                        | How often VictoriaMetrics scrapes wg-easy, Blocky, and itself                                     |
+| `VM_URL`                                 | `http://127.0.0.1:8428`      | VictoriaMetrics API URL                                                                           |
+| `VMUI_URL`                               | `http://127.0.0.1:8428/vmui` | VMUI dashboard URL                                                                                |
+| `VM_DATA_DIR`                            | `/data/victoriametrics`      | Directory for metrics data                                                                        |
+| `VM_RETENTION_PERIOD`                    | `30d`                        | Metrics retention period                                                                          |
+| `VM_HTTP_LISTEN_ADDR`                    | `:8428`                      | VictoriaMetrics HTTP listen address                                                               |
+| `VM_METRICS_TOKEN`                       | `—`                          | Bearer token for scraping wg-easy's `/metrics` (must match the wg-easy metrics password when set) |
+
+Low-spec hosts can increase `NUXT_PUBLIC_DASHBOARD_POLL_INTERVAL_MS` (for example, to `30000`), increase `VM_SCRAPE_INTERVAL`, or shorten `VM_RETENTION_PERIOD`. The dashboard interval controls client/status refreshes and the server-side metrics cache, reducing WireGuard and VictoriaMetrics requests together. Invalid dashboard intervals or values below one second fall back to 10 seconds.
 
 ## Contributors
 

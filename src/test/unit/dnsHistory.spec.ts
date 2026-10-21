@@ -493,6 +493,76 @@ describe('DnsQueryService CSV query log reader', () => {
     expect(readFileMock).toHaveBeenCalledTimes(2);
   });
 
+  test('reuses unchanged historical files when the active log grows', async () => {
+    const files = {
+      'historical-cache.log': ROW_ALLOWED,
+      'active-cache.log': ROW_BLOCKED,
+    };
+    mockLogFiles(files);
+
+    const first = await DnsQueryService.getHistory({
+      limit: 100,
+      offset: 0,
+      sort: 'desc',
+    });
+    expect(first.total).toBe(2);
+    expect(readFileMock).toHaveBeenCalledTimes(2);
+
+    files['active-cache.log'] = [ROW_BLOCKED, ROW_API].join('\n');
+    const second = await DnsQueryService.getHistory({
+      limit: 100,
+      offset: 0,
+      sort: 'desc',
+    });
+
+    expect(second.total).toBe(3);
+    expect(readFileMock).toHaveBeenCalledTimes(3);
+    expect(
+      readFileMock.mock.calls.filter(([path]) =>
+        String(path).endsWith('historical-cache.log')
+      )
+    ).toHaveLength(1);
+    expect(
+      readFileMock.mock.calls.filter(([path]) =>
+        String(path).endsWith('active-cache.log')
+      )
+    ).toHaveLength(2);
+  });
+
+  test('releases parsed rows after the cache is idle', async () => {
+    vi.useFakeTimers();
+    try {
+      mockLogFiles({ 'idle-cache.log': ROW_ALLOWED });
+
+      await DnsQueryService.getStats();
+      expect(readFileMock).toHaveBeenCalledTimes(1);
+
+      await vi.advanceTimersByTimeAsync(5 * 60 * 1_000 + 1);
+      await DnsQueryService.getStats();
+      expect(readFileMock).toHaveBeenCalledTimes(2);
+    } finally {
+      mockBlockyEnv.ENABLED = false;
+      await DnsQueryService.getStats();
+      vi.useRealTimers();
+    }
+  });
+
+  test('shares one parse across concurrent history, stats, and client reads', async () => {
+    mockLogFiles({ 'concurrent-cache.log': ROW_ALLOWED });
+
+    const [history, stats, clients] = await Promise.all([
+      DnsQueryService.getHistory({ limit: 100, offset: 0, sort: 'desc' }),
+      DnsQueryService.getStats(),
+      DnsQueryService.getClients(),
+    ]);
+
+    expect(history.total).toBe(1);
+    expect(stats.totalQueries).toBe(1);
+    expect(clients).toEqual(['10.8.0.2']);
+    expect(readdirMock).toHaveBeenCalledTimes(1);
+    expect(readFileMock).toHaveBeenCalledTimes(1);
+  });
+
   test('resolves the friendly client name for a matching tunnel IP', async () => {
     mockLogFiles({ 'blocky.log': ROW_ALLOWED }); // client IP 10.8.0.2
     mockClientsRepo.getAllPublic.mockResolvedValue([

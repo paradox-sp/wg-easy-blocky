@@ -63,6 +63,14 @@
 const globalStore = useGlobalStore();
 const clientsStore = useClientsStore();
 const metricsStore = useMetricsStore();
+const configuredDashboardPollIntervalMs = Number(
+  useRuntimeConfig().public.dashboardPollIntervalMs
+);
+const dashboardPollIntervalMs =
+  Number.isSafeInteger(configuredDashboardPollIntervalMs) &&
+  configuredDashboardPollIntervalMs >= 1_000
+    ? configuredDashboardPollIntervalMs
+    : 10_000;
 
 // TODO?: use hover card to show more detailed info without leaving the page
 // or do something like a accordion
@@ -82,7 +90,7 @@ const { pause: pausePolling, resume: resumePolling } = useTimeoutPoll(
 
     metricsStore.fetchDashboard().catch(console.error);
   },
-  5000,
+  dashboardPollIntervalMs,
   { immediate: false }
 );
 

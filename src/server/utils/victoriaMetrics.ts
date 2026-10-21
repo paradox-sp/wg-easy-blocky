@@ -15,8 +15,30 @@ interface QueryResult {
   };
 }
 
+export interface MetricsDashboard {
+  vpnTraffic: { rx: number; tx: number };
+  dnsStats: {
+    queriesPerSec: number;
+    blockedPerSec: number;
+    cacheHitRate: number;
+  };
+  peerStats: Array<{
+    name: string;
+    rx: number;
+    tx: number;
+    lastHandshake: number;
+  }>;
+}
+
+const VM_REQUEST_TIMEOUT_MS = 5_000;
+
 class VictoriaMetrics {
   #baseUrl: string;
+  #dashboardCache: {
+    data: MetricsDashboard;
+    expiresAt: number;
+  } | null = null;
+  #dashboardRequest: Promise<MetricsDashboard> | null = null;
 
   constructor() {
     this.#baseUrl = VICTORIA_METRICS_ENV.URL;
@@ -34,7 +56,9 @@ class VictoriaMetrics {
 
     try {
       const query = params ? `?${params}` : '';
-      const response = await fetch(`${this.#baseUrl}${path}${query}`);
+      const response = await fetch(`${this.#baseUrl}${path}${query}`, {
+        signal: AbortSignal.timeout(VM_REQUEST_TIMEOUT_MS),
+      });
       if (!response.ok) return null;
       return response;
     } catch (error) {
@@ -45,7 +69,7 @@ class VictoriaMetrics {
 
   async query(query: string, time?: number): Promise<QueryResult | null> {
     const params = new URLSearchParams({ query });
-    if (time) params.append('time', String(time));
+    if (time !== undefined) params.append('time', String(time));
 
     const response = await this.#request('/api/v1/query', params);
     return response ? await response.json() : null;
@@ -75,6 +99,52 @@ class VictoriaMetrics {
 
   getVMUIUrl(): string {
     return VICTORIA_METRICS_ENV.VMUI_URL;
+  }
+
+  /**
+   * Cache one polling interval of dashboard data and share an in-flight load
+   * so simultaneous viewers do not each issue seven identical VM queries.
+   */
+  async getDashboard(): Promise<MetricsDashboard> {
+    const now = Date.now();
+    if (this.#dashboardCache && this.#dashboardCache.expiresAt > now) {
+      return this.#dashboardCache.data;
+    }
+    if (this.#dashboardRequest) {
+      return this.#dashboardRequest;
+    }
+
+    const request = Promise.all([
+      this.getVpnTraffic(),
+      this.getDnsStats(),
+      this.getPeerStats(),
+    ]).then(([vpnTraffic, dnsStats, peerStats]) => ({
+      vpnTraffic: vpnTraffic ?? { rx: 0, tx: 0 },
+      dnsStats: dnsStats ?? {
+        queriesPerSec: 0,
+        blockedPerSec: 0,
+        cacheHitRate: 0,
+      },
+      peerStats: peerStats ?? [],
+    }));
+    this.#dashboardRequest = request;
+
+    try {
+      const data = await request;
+      this.#dashboardCache = {
+        data,
+        expiresAt: Date.now() + VICTORIA_METRICS_ENV.DASHBOARD_POLL_INTERVAL_MS,
+      };
+      return data;
+    } finally {
+      if (this.#dashboardRequest === request) {
+        this.#dashboardRequest = null;
+      }
+    }
+  }
+
+  clearDashboardCache(): void {
+    this.#dashboardCache = null;
   }
 
   // Predefined queries for dashboard
@@ -153,7 +223,7 @@ class VictoriaMetrics {
       peers.set(name, peer);
     }
 
-    return Array.from(peers.entries()).map(([name, data]) => ({
+    return Array.from(peers, ([name, data]) => ({
       name,
       ...data,
     }));

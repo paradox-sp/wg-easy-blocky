@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- Adaptive login throttling for password, HTTP Basic, and two-factor authentication
+
+### Changed
+
+- Reorganized the admin navigation and improved the sign-in form hierarchy and accessibility
+- Reused unchanged Blocky DNS log parses, evicted idle history caches, reduced filtered-history allocations, and made dashboard and VictoriaMetrics scrape intervals low-spec friendly
+- Reduced duplicate Blocky configuration reads, VictoriaMetrics dashboard queries, and concurrent DNS history log parsing; bounded optional service health requests
+
 ## [15.4.0] - 2026-08-14
 
 ### Added

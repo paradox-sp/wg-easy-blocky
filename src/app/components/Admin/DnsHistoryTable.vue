@@ -257,6 +257,10 @@ onMounted(() => {
   fetchHistory();
 });
 
+onUnmounted(() => {
+  if (searchTimeout) clearTimeout(searchTimeout);
+});
+
 function fetchHistory() {
   const params: Record<string, unknown> = {
     limit: store.limit ?? 50,
