@@ -200,6 +200,7 @@
           "notNull": false,
           "autoincrement": false
         },
+
         "dns": {
           "name": "dns",
           "type": "text",
@@ -629,6 +630,7 @@
           "notNull": false,
           "autoincrement": false
         },
+
         "enabled": {
           "name": "enabled",
           "type": "integer",

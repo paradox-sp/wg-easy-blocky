@@ -6,7 +6,7 @@
 # -----------------------------------------------------------------------------
 # Stage 1: Build wg-easy (Node.js application)
 # -----------------------------------------------------------------------------
-FROM docker.io/library/node:krypton-alpine@sha256:d32cdf619f63fe0471182d08996dd516c6275bb5fd31ae06e55a570bd9e1ad43 AS build-wg-easy
+FROM docker.io/library/node:krypton-alpine@sha256:ebfe2f90462722a7a4de65e91990e97fe0d401c70e0e762c5b53302f905ec1c1 AS build-wg-easy
 WORKDIR /app
 
 # Update corepack and enable pnpm
@@ -23,9 +23,9 @@ RUN pnpm build
 
 # Build amneziawg-tools and amneziawg-go
 # renovate: datasource=github-releases depName=amnezia-vpn/amneziawg-tools
-ARG AWGTOOLS_BRANCH=v3.0.20260805
+ARG AWGTOOLS_BRANCH=v3.1.20260812
 # renovate: datasource=github-tags depName=amnezia-vpn/amneziawg-go
-ARG AWGGO_BRANCH=v3.0.20260805
+ARG AWGGO_BRANCH=v3.1.20260828
 
 RUN apk add --no-cache linux-headers build-base go git && \
     git clone --depth 1 --branch ${AWGTOOLS_BRANCH} https://github.com/amnezia-vpn/amneziawg-tools.git && \
@@ -39,7 +39,7 @@ RUN apk add --no-cache linux-headers build-base go git && \
 # -----------------------------------------------------------------------------
 # Stage 2: Build libsql (for Nitro)
 # -----------------------------------------------------------------------------
-FROM docker.io/library/node:krypton-alpine@sha256:d32cdf619f63fe0471182d08996dd516c6275bb5fd31ae06e55a570bd9e1ad43 AS build-libsql
+FROM docker.io/library/node:krypton-alpine@sha256:ebfe2f90462722a7a4de65e91990e97fe0d401c70e0e762c5b53302f905ec1c1 AS build-libsql
 WORKDIR /app
 RUN npm install --no-save --omit=dev libsql
 
@@ -86,7 +86,7 @@ RUN --mount=type=cache,target=/root/.cache/go-build \
 # -----------------------------------------------------------------------------
 # Stage 6: Final runtime image
 # -----------------------------------------------------------------------------
-FROM docker.io/library/node:krypton-alpine@sha256:d32cdf619f63fe0471182d08996dd516c6275bb5fd31ae06e55a570bd9e1ad43 AS runtime
+FROM docker.io/library/node:krypton-alpine@sha256:ebfe2f90462722a7a4de65e91990e97fe0d401c70e0e762c5b53302f905ec1c1 AS runtime
 
 # Install s6-overlay for process management
 # renovate: datasource=github-tags depName=just-containers/s6-overlay
@@ -104,7 +104,6 @@ RUN case "${TARGETARCH}" in \
     tar -C / -Jxpf /tmp/s6-overlay-noarch.tar.xz && \
     tar -C / -Jxpf /tmp/s6-overlay-arch.tar.xz && \
     rm /tmp/s6-overlay-*.tar.xz
-
 WORKDIR /app
 
 # Health check for WireGuard interface (toolchain-agnostic: works for both

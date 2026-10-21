@@ -92,33 +92,33 @@ When Blocky is enabled, generated client configs use the WireGuard server's tunn
 
 ### Published Ports
 
-| Port      | Protocol       | Service                  |
-| --------- | -------------- | ------------------------ |
-| `53`      | udp + tcp      | Blocky DNS               |
-| `4000`    | tcp            | Blocky HTTP API/Metrics  |
-| `8428`    | tcp            | VictoriaMetrics/VMUI     |
+| Port   | Protocol  | Service                 |
+| ------ | --------- | ----------------------- |
+| `53`   | udp + tcp | Blocky DNS              |
+| `4000` | tcp       | Blocky HTTP API/Metrics |
+| `8428` | tcp       | VictoriaMetrics/VMUI    |
 
 ### Blocky Environment Variables
 
-| Env                | Default                   | Description                        |
-| ------------------ | ------------------------- | ---------------------------------- |
-| `BLOCKY_ENABLED`   | `true`                    | Enables the Blocky service         |
-| `BLOCKY_HOST`      | `127.0.0.1`               | Blocky listen address              |
-| `BLOCKY_CONFIG`    | `/etc/blocky/config.yml`  | Path to the Blocky config file     |
-| `BLOCKY_LOG_DIR`   | `/data/blocky/logs`       | Directory where Blocky writes CSV query logs |
-| `BLOCKY_HTTP_PORT` | `4000`                    | Blocky HTTP API/Metrics port       |
+| Env                | Default                  | Description                                  |
+| ------------------ | ------------------------ | -------------------------------------------- |
+| `BLOCKY_ENABLED`   | `true`                   | Enables the Blocky service                   |
+| `BLOCKY_HOST`      | `127.0.0.1`              | Blocky listen address                        |
+| `BLOCKY_CONFIG`    | `/etc/blocky/config.yml` | Path to the Blocky config file               |
+| `BLOCKY_LOG_DIR`   | `/data/blocky/logs`      | Directory where Blocky writes CSV query logs |
+| `BLOCKY_HTTP_PORT` | `4000`                   | Blocky HTTP API/Metrics port                 |
 
 ### VictoriaMetrics Environment Variables
 
-| Env                    | Default                      | Description                             |
-| ---------------------- | ---------------------------- | --------------------------------------- |
-| `VM_ENABLED`           | `true`                       | Enables the VictoriaMetrics service     |
-| `VM_URL`               | `http://127.0.0.1:8428`      | VictoriaMetrics API URL                 |
-| `VMUI_URL`             | `http://127.0.0.1:8428/vmui` | VMUI dashboard URL                      |
-| `VM_DATA_DIR`          | `/data/victoriametrics`      | Directory for metrics data              |
-| `VM_RETENTION_PERIOD`  | `30d`                        | Metrics retention period               |
-| `VM_HTTP_LISTEN_ADDR`  | `:8428`                      | VictoriaMetrics HTTP listen address     |
-| `VM_METRICS_TOKEN`     | `—`                          | Bearer token for scraping wg-easy's `/metrics` (must match the wg-easy metrics password when set) |
+| Env                   | Default                      | Description                                                                                       |
+| --------------------- | ---------------------------- | ------------------------------------------------------------------------------------------------- |
+| `VM_ENABLED`          | `true`                       | Enables the VictoriaMetrics service                                                               |
+| `VM_URL`              | `http://127.0.0.1:8428`      | VictoriaMetrics API URL                                                                           |
+| `VMUI_URL`            | `http://127.0.0.1:8428/vmui` | VMUI dashboard URL                                                                                |
+| `VM_DATA_DIR`         | `/data/victoriametrics`      | Directory for metrics data                                                                        |
+| `VM_RETENTION_PERIOD` | `30d`                        | Metrics retention period                                                                          |
+| `VM_HTTP_LISTEN_ADDR` | `:8428`                      | VictoriaMetrics HTTP listen address                                                               |
+| `VM_METRICS_TOKEN`    | `—`                          | Bearer token for scraping wg-easy's `/metrics` (must match the wg-easy metrics password when set) |
 
 ## Contributors
 
