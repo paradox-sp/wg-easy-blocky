@@ -58,3 +58,11 @@ describe('Blocky config cache', () => {
     expect(getConfig).toHaveBeenCalledTimes(2);
   });
 });
+
+describe('Blocky config serialization', () => {
+  test('binds the HTTP API and metrics listener to the configured private host', () => {
+    const blocky = new Blocky();
+
+    expect(blocky.configToYaml(firstConfig)).toContain('http: 127.0.0.1:4000');
+  });
+});

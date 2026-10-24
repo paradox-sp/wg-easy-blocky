@@ -171,7 +171,11 @@ async function save() {
         blockType: form.blocking.blockType,
         blockLists: filterEmpty(form.blocking.blockLists),
         allowLists: filterEmpty(form.blocking.allowLists),
-        clientGroupsBlock: store.config?.blocking?.clientGroupsBlock ?? {},
+        clientGroupsBlock: Object.fromEntries(
+          Object.entries(store.config?.blocking?.clientGroupsBlock ?? {}).map(
+            ([group, lists]) => [group, [...lists]]
+          )
+        ),
       },
     };
 

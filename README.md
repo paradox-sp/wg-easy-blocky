@@ -92,11 +92,11 @@ When Blocky is enabled, generated client configs use the WireGuard server's tunn
 
 ### Published Ports
 
-| Port   | Protocol  | Service                 |
-| ------ | --------- | ----------------------- |
-| `53`   | udp + tcp | Blocky DNS              |
-| `4000` | tcp       | Blocky HTTP API/Metrics |
-| `8428` | tcp       | VictoriaMetrics/VMUI    |
+| Port | Protocol  | Service    |
+| ---- | --------- | ---------- |
+| `53` | udp + tcp | Blocky DNS |
+
+Blocky's HTTP API and VictoriaMetrics listen only on the container loopback interface. Manage Blocky and open VMUI through the authenticated wg-easy admin pages on port `51821`; ports `4000` and `8428` are not published.
 
 ### Blocky Environment Variables
 
@@ -119,7 +119,7 @@ When Blocky is enabled, generated client configs use the WireGuard server's tunn
 | `VMUI_URL`                               | `http://127.0.0.1:8428/vmui` | VMUI dashboard URL                                                                                |
 | `VM_DATA_DIR`                            | `/data/victoriametrics`      | Directory for metrics data                                                                        |
 | `VM_RETENTION_PERIOD`                    | `30d`                        | Metrics retention period                                                                          |
-| `VM_HTTP_LISTEN_ADDR`                    | `:8428`                      | VictoriaMetrics HTTP listen address                                                               |
+| `VM_HTTP_LISTEN_ADDR`                    | `127.0.0.1:8428`             | Private VictoriaMetrics HTTP listen address                                                       |
 | `VM_METRICS_TOKEN`                       | `—`                          | Bearer token for scraping wg-easy's `/metrics` (must match the wg-easy metrics password when set) |
 
 Low-spec hosts can increase `NUXT_PUBLIC_DASHBOARD_POLL_INTERVAL_MS` (for example, to `30000`), increase `VM_SCRAPE_INTERVAL`, or shorten `VM_RETENTION_PERIOD`. The dashboard interval controls client/status refreshes and the server-side metrics cache, reducing WireGuard and VictoriaMetrics requests together. Invalid dashboard intervals or values below one second fall back to 10 seconds.

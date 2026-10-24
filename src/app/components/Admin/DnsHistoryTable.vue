@@ -291,9 +291,10 @@ function nextPage() {
   fetchHistory();
 }
 
-function formatTimestamp(ts?: string | number | null): string {
+function formatTimestamp(ts?: string | number | Date | null): string {
   if (!ts) return '-';
-  const date = new Date(typeof ts === 'number' ? ts * 1000 : ts);
+  const date =
+    ts instanceof Date ? ts : new Date(typeof ts === 'number' ? ts * 1000 : ts);
   return date.toLocaleString();
 }
 </script>

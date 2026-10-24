@@ -39,21 +39,19 @@ services:
         ipv6_address: fdcc:ad94:bacf:61a3::2a
 
     ports:
-      - "${WG_PORT:-51820}:${WG_PORT:-51820}/udp"   # WireGuard VPN
-      - "${PORT:-51821}:${PORT:-51821}/tcp"         # wg-easy Web UI
-      - "53:53/udp"                                 # Blocky DNS (UDP)
-      - "53:53/tcp"                                 # Blocky DNS (TCP)
-      - "${BLOCKY_HTTP_PORT:-4000}:${BLOCKY_HTTP_PORT:-4000}/tcp" # Blocky HTTP API
-      - "8428:8428/tcp"                             # VictoriaMetrics / VMUI
+      - "${WG_PORT:-51820}:${WG_PORT:-51820}/udp" # WireGuard VPN
+      - "${PORT:-51821}:${PORT:-51821}/tcp" # wg-easy Web UI
+      - "53:53/udp" # Blocky DNS (UDP)
+      - "53:53/tcp" # Blocky DNS (TCP)
 
     # -------------------------------------------------------------------------
     # Persistence
     # -------------------------------------------------------------------------
     volumes:
-      - etc_wireguard:/etc/wireguard            # WireGuard keys + configs
-      - blocky_data:/data/blocky                # Blocky CSV query logs
+      - etc_wireguard:/etc/wireguard # WireGuard keys + configs
+      - blocky_data:/data/blocky # Blocky CSV query logs
       - victoriametrics_data:/data/victoriametrics # Time-series data
-      - /lib/modules:/lib/modules:ro            # Kernel modules (WireGuard)
+      - /lib/modules:/lib/modules:ro # Kernel modules (WireGuard)
 
     # -------------------------------------------------------------------------
     # Capabilities & sysctls (required for WireGuard + iptables NAT)
@@ -126,7 +124,7 @@ services:
       BLOCKY_CONFIG: "${BLOCKY_CONFIG:-/etc/blocky/config.yml}"
       # Directory where Blocky writes its CSV query logs
       BLOCKY_LOG_DIR: "${BLOCKY_LOG_DIR:-/data/blocky/logs}"
-      # Port Blocky's HTTP API / metrics listen on (must match published port)
+      # Internal port for Blocky's loopback-only HTTP API / metrics listener
       BLOCKY_HTTP_PORT: "${BLOCKY_HTTP_PORT:-4000}"
 
       # --- VictoriaMetrics ------------------------------------------------------
@@ -144,8 +142,8 @@ services:
       VM_DATA_DIR: "${VM_DATA_DIR:-/data/victoriametrics}"
       # Retention period for stored metrics
       VM_RETENTION_PERIOD: "${VM_RETENTION_PERIOD:-30d}"
-      # HTTP listen address (VMUI is served here)
-      VM_HTTP_LISTEN_ADDR: "${VM_HTTP_LISTEN_ADDR:-:8428}"
+      # Loopback-only listener; VMUI and API access stay behind authenticated admin routes
+      VM_HTTP_LISTEN_ADDR: "${VM_HTTP_LISTEN_ADDR:-127.0.0.1:8428}"
       # Bearer token for scraping wg-easy's /metrics endpoint.
       # MUST match the wg-easy metrics password when one is configured
       # (Settings → Metrics in the UI), otherwise the wg-easy scrape 401s.

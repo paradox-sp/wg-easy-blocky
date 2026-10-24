@@ -16,12 +16,12 @@ interface QueryResult {
 }
 
 export interface MetricsDashboard {
-  vpnTraffic: { rx: number; tx: number };
+  vpnTraffic: { rx: number; tx: number } | null;
   dnsStats: {
     queriesPerSec: number;
     blockedPerSec: number;
     cacheHitRate: number;
-  };
+  } | null;
   peerStats: Array<{
     name: string;
     rx: number;
@@ -68,7 +68,7 @@ class VictoriaMetrics {
   }
 
   async query(query: string, time?: number): Promise<QueryResult | null> {
-    const params = new URLSearchParams({ query });
+    const params = new URLSearchParams({ query, nocache: '1' });
     if (time !== undefined) params.append('time', String(time));
 
     const response = await this.#request('/api/v1/query', params);
@@ -119,12 +119,8 @@ class VictoriaMetrics {
       this.getDnsStats(),
       this.getPeerStats(),
     ]).then(([vpnTraffic, dnsStats, peerStats]) => ({
-      vpnTraffic: vpnTraffic ?? { rx: 0, tx: 0 },
-      dnsStats: dnsStats ?? {
-        queriesPerSec: 0,
-        blockedPerSec: 0,
-        cacheHitRate: 0,
-      },
+      vpnTraffic,
+      dnsStats,
       peerStats: peerStats ?? [],
     }));
     this.#dashboardRequest = request;

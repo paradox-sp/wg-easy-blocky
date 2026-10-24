@@ -109,7 +109,7 @@ export class Blocky {
     const lines: string[] = [];
     lines.push('ports:');
     lines.push('  dns: 53');
-    lines.push(`  http: ${BLOCKY_ENV.HTTP_PORT}`);
+    lines.push(`  http: ${BLOCKY_ENV.HOST}:${BLOCKY_ENV.HTTP_PORT}`);
     lines.push('');
     lines.push('log:');
     lines.push('  level: info');

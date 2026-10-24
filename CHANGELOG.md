@@ -17,6 +17,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Reused unchanged Blocky DNS log parses, evicted idle history caches, reduced filtered-history allocations, and made dashboard and VictoriaMetrics scrape intervals low-spec friendly
 - Reduced duplicate Blocky configuration reads, VictoriaMetrics dashboard queries, and concurrent DNS history log parsing; bounded optional service health requests
 
+### Fixed
+
+- Restored VictoriaMetrics scraping and VMUI embedding, stopped fabricating zero dashboard metrics during outages, and restricted Blocky and VictoriaMetrics HTTP access to authenticated admin routes
+
 ## [15.4.0] - 2026-08-14
 
 ### Added

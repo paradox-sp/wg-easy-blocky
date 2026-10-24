@@ -2,38 +2,38 @@
 # This config is used by VictoriaMetrics to scrape metrics from wg-easy and Blocky
 
 global:
-  scrape_interval: ${VM_SCRAPE_INTERVAL}
+  scrape_interval: "%{VM_SCRAPE_INTERVAL}"
   external_labels:
-    cluster: 'wg-easy-blocky'
-    environment: 'production'
+    cluster: "wg-easy-blocky"
+    environment: "production"
 
 scrape_configs:
   # wg-easy metrics
   # The /metrics endpoint enforces Bearer auth when a metrics password is set.
   # VM_METRICS_TOKEN must equal the wg-easy metrics password when one is configured
   # (VictoriaMetrics substitutes ${ENV_VAR} placeholders from its environment).
-  - job_name: 'wg-easy'
+  - job_name: "wg-easy"
     static_configs:
-      - targets: ['localhost:51821']
-    metrics_path: '/metrics/prometheus'
-    scheme: 'http'
+      - targets: ["localhost:51821"]
+    metrics_path: "/metrics/prometheus"
+    scheme: "http"
     authorization:
       type: Bearer
-      credentials: ${VM_METRICS_TOKEN}
+      credentials: "%{VM_METRICS_TOKEN}"
 
   # Blocky metrics
-  - job_name: 'blocky'
+  - job_name: "blocky"
     static_configs:
-      - targets: ['localhost:4000']
-    metrics_path: '/metrics'
-    scheme: 'http'
+      - targets: ["localhost:4000"]
+    metrics_path: "/metrics"
+    scheme: "http"
 
   # VictoriaMetrics self-monitoring
-  - job_name: 'victoriametrics'
+  - job_name: "victoriametrics"
     static_configs:
-      - targets: ['localhost:8428']
-    metrics_path: '/metrics'
-    scheme: 'http'
+      - targets: ["localhost:8428"]
+    metrics_path: "/metrics"
+    scheme: "http"
 
   # Node Exporter (if running on host)
   # - job_name: 'node'

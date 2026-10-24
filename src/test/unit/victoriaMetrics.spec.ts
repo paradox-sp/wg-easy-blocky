@@ -79,7 +79,7 @@ describe('VictoriaMetrics', () => {
       body
     );
     expect(fetchMock).toHaveBeenCalledWith(
-      'http://127.0.0.1:8428/api/v1/query?query=up&time=1720000000',
+      'http://127.0.0.1:8428/api/v1/query?query=up&nocache=1&time=1720000000',
       { signal: expect.any(AbortSignal) }
     );
   });
@@ -90,7 +90,7 @@ describe('VictoriaMetrics', () => {
     await VictoriaMetrics.query('up', 0);
 
     expect(fetchMock).toHaveBeenCalledWith(
-      'http://127.0.0.1:8428/api/v1/query?query=up&time=0',
+      'http://127.0.0.1:8428/api/v1/query?query=up&nocache=1&time=0',
       { signal: expect.any(AbortSignal) }
     );
   });
@@ -161,6 +161,16 @@ describe('VictoriaMetrics', () => {
     now += mockVictoriaMetricsEnv.DASHBOARD_POLL_INTERVAL_MS + 1;
     await VictoriaMetrics.getDashboard();
     expect(fetchMock).toHaveBeenCalledTimes(14);
+  });
+
+  test('does not fabricate zero dashboard metrics when VictoriaMetrics has no data', async () => {
+    fetchMock.mockImplementation(async () => okJson(vectorResult([])));
+
+    await expect(VictoriaMetrics.getDashboard()).resolves.toEqual({
+      vpnTraffic: null,
+      dnsStats: null,
+      peerStats: [],
+    });
   });
 
   test('getVpnTraffic parses rx and tx from parallel queries', async () => {

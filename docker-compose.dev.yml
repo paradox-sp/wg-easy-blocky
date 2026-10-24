@@ -22,8 +22,6 @@ services:
       - "51821:51821/tcp"
       - "53:53/udp"
       - "53:53/tcp"
-      - "4000:4000/tcp"
-      - "8428:8428/tcp"
     cap_add:
       - NET_ADMIN
       - SYS_MODULE
