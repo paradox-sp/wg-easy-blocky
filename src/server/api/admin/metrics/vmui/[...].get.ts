@@ -7,4 +7,5 @@ export default defineMetricsProxyHandler({
   headers: (event) => ({
     'X-Forwarded-Host': event.node.req.headers.host || '',
   }),
+  allowEmbedding: true,
 });

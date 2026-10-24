@@ -159,10 +159,8 @@ describe('Full Stack Integration', () => {
     const response = await authedGet('/api/admin/metrics/vmui/');
     expect(response.ok).toBe(true);
     expect(response.headers.get('content-type')).toContain('text/html');
-    expect(response.headers.get('x-frame-options')).toBe('SAMEORIGIN');
-    expect(response.headers.get('content-security-policy')).toContain(
-      "frame-ancestors 'self'"
-    );
+    expect(response.headers.get('x-frame-options')).toBeNull();
+    expect(response.headers.get('content-security-policy')).toBeNull();
     expect(await response.text()).toContain('<html');
   }, 30000);
 

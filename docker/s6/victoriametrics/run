@@ -1,8 +1,6 @@
 #!/command/with-contenv sh
 exec victoria-metrics \
     -httpListenAddr=${VM_HTTP_LISTEN_ADDR:-:8428} \
-    -http.header.frameOptions=SAMEORIGIN \
-    -http.header.csp="frame-ancestors 'self'" \
     -retentionPeriod=${VM_RETENTION_PERIOD:-30d} \
     -storageDataPath=${VM_DATA_DIR:-/data/victoriametrics} \
     -promscrape.config=/etc/victoriametrics/scrape.yml \

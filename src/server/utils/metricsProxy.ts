@@ -13,6 +13,11 @@ type MetricsProxyOptions = {
   baseUrl: string | ((event: H3Event) => string);
   /** Extra headers to forward to the upstream service. */
   headers?: (event: H3Event) => Record<string, string>;
+  /**
+   * Strip upstream anti-framing headers after authentication. Use only for
+   * same-origin UI routes whose upstream listener is private.
+   */
+  allowEmbedding?: boolean;
 };
 
 /**
@@ -27,6 +32,7 @@ export function defineMetricsProxyHandler({
   prefix,
   baseUrl,
   headers,
+  allowEmbedding = false,
 }: MetricsProxyOptions) {
   return definePermissionEventHandler('admin', 'any', async ({ event }) => {
     const url = getRequestURL(event);
@@ -34,10 +40,14 @@ export function defineMetricsProxyHandler({
       typeof baseUrl === 'function' ? baseUrl(event) : baseUrl;
     const targetUrl = `${resolvedBaseUrl}${url.pathname.replace(prefix, '')}${url.search}`;
 
-    return proxyRequest(
-      event,
-      targetUrl,
-      headers ? { headers: headers(event) } : undefined
-    );
+    return proxyRequest(event, targetUrl, {
+      ...(headers ? { headers: headers(event) } : {}),
+      onResponse: allowEmbedding
+        ? (proxyEvent) => {
+            proxyEvent.node.res.removeHeader('x-frame-options');
+            proxyEvent.node.res.removeHeader('content-security-policy');
+          }
+        : undefined,
+    });
   });
 }
