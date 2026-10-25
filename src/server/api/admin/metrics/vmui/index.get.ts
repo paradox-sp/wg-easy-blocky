@@ -8,4 +8,5 @@ export default defineMetricsProxyHandler({
     'X-Forwarded-Host': event.node.req.headers.host || '',
   }),
   allowEmbedding: true,
+  embeddedParentPath: '/admin/metrics',
 });

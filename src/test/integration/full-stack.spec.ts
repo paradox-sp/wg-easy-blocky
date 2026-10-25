@@ -61,9 +61,12 @@ async function login(): Promise<string> {
 }
 
 /** GET an admin endpoint with the session cookie attached. */
-async function authedGet(path: string): Promise<Response> {
+async function authedGet(
+  path: string,
+  headers: Record<string, string> = {}
+): Promise<Response> {
   return fetch(`${BASE}${path}`, {
-    headers: { Cookie: cookie },
+    headers: { ...headers, Cookie: cookie },
   });
 }
 
@@ -155,8 +158,14 @@ describe('Full Stack Integration', () => {
     ]);
   }, 70000);
 
-  it('should serve embeddable VMUI and its assets through the authenticated proxy', async () => {
-    const response = await authedGet('/api/admin/metrics/vmui/');
+  it('should serve VMUI only in the authenticated admin iframe', async () => {
+    const directResponse = await authedGet('/api/admin/metrics/vmui/');
+    expect(directResponse.status).toBe(403);
+
+    const response = await authedGet('/api/admin/metrics/vmui/', {
+      Referer: `${BASE}/admin/metrics`,
+      'Sec-Fetch-Dest': 'iframe',
+    });
     expect(response.ok).toBe(true);
     expect(response.headers.get('content-type')).toContain('text/html');
     expect(response.headers.get('x-frame-options')).toBe('SAMEORIGIN');

@@ -1,6 +1,8 @@
 import { setTimeout as delay } from 'node:timers/promises';
 
 import {
+  createError,
+  getHeader,
   getRequestURL,
   proxyRequest,
   send,
@@ -27,6 +29,11 @@ type MetricsProxyOptions = {
    * same-origin admin page. API proxies must leave this disabled.
    */
   allowEmbedding?: boolean;
+  /**
+   * When set, only serve this document for an iframe navigation initiated by
+   * the given same-origin page. Leave unset for the iframe's asset/API routes.
+   */
+  embeddedParentPath?: string;
 };
 
 const EMBEDDING_HEADERS = {
@@ -67,6 +74,35 @@ async function fetchWithStartupRetry(
 
 function allowSameOriginEmbedding(event: H3Event) {
   setResponseHeaders(event, EMBEDDING_HEADERS);
+}
+
+function assertEmbeddedRequest(
+  event: H3Event,
+  requestUrl: URL,
+  parentPath: string
+) {
+  const destination = getHeader(event, 'Sec-Fetch-Dest');
+  const referrer = getHeader(event, 'Referer');
+
+  let parentUrl: URL | null = null;
+  if (referrer) {
+    try {
+      parentUrl = new URL(referrer);
+    } catch {
+      // Invalid referrers are rejected below.
+    }
+  }
+
+  if (
+    (destination !== undefined && destination !== 'iframe') ||
+    parentUrl?.origin !== requestUrl.origin ||
+    parentUrl.pathname !== parentPath
+  ) {
+    throw createError({
+      statusCode: 403,
+      statusMessage: 'VMUI is only available in the admin metrics page',
+    });
+  }
 }
 
 function rewriteUpstreamLocation(
@@ -111,13 +147,16 @@ export function defineMetricsProxyHandler({
   baseUrl,
   headers,
   allowEmbedding = false,
+  embeddedParentPath,
 }: MetricsProxyOptions) {
   return definePermissionEventHandler('admin', 'any', async ({ event }) => {
     const url = getRequestURL(event);
+    if (embeddedParentPath) {
+      assertEmbeddedRequest(event, url, embeddedParentPath);
+    }
     const resolvedBaseUrl =
       typeof baseUrl === 'function' ? baseUrl(event) : baseUrl;
     const targetUrl = `${resolvedBaseUrl}${url.pathname.replace(prefix, '')}${url.search}`;
-
     try {
       return await proxyRequest(event, targetUrl, {
         ...(headers ? { headers: headers(event) } : {}),

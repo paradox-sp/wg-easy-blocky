@@ -4,6 +4,10 @@ import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import { defineMetricsProxyHandler } from '#server/utils/metricsProxy';
 
 const h3Mocks = vi.hoisted(() => ({
+  createError: vi.fn((input: { statusCode: number; statusMessage: string }) =>
+    Object.assign(new Error(input.statusMessage), input)
+  ),
+  getHeader: vi.fn(),
   getRequestURL: vi.fn(),
   proxyRequest: vi.fn(),
   send: vi.fn(),
@@ -26,16 +30,18 @@ vi.mock('#server/utils/handler', () => ({
   ),
 }));
 
-function createEvent(): H3Event {
+function createEvent(headers: Record<string, string> = {}): H3Event {
   return {
     node: {
-      req: { headers: { host: 'vpn.example.test' } },
+      req: {
+        headers: { host: 'vpn.example.test', ...headers },
+      },
       res: {},
     },
   } as unknown as H3Event;
 }
 
-function createHandler(allowEmbedding = true) {
+function createHandler(allowEmbedding = true, embeddedParentPath?: string) {
   return defineMetricsProxyHandler({
     prefix: '/api/admin/metrics/vmui',
     baseUrl: 'http://127.0.0.1:8428/vmui',
@@ -43,10 +49,18 @@ function createHandler(allowEmbedding = true) {
       'X-Forwarded-Host': event.node.req.headers.host || '',
     }),
     allowEmbedding,
+    embeddedParentPath,
   });
 }
 
 beforeEach(() => {
+  h3Mocks.createError.mockClear();
+  h3Mocks.getHeader
+    .mockReset()
+    .mockImplementation(
+      (event: H3Event, name: string) =>
+        event.node.req.headers[name.toLowerCase()] as string | undefined
+    );
   h3Mocks.getRequestURL.mockReset();
   h3Mocks.proxyRequest.mockReset();
   h3Mocks.send.mockReset().mockResolvedValue(undefined);
@@ -82,6 +96,52 @@ describe('metrics proxy', () => {
         onResponse: expect.any(Function),
       })
     );
+  });
+
+  test('serves the VMUI document only inside the admin metrics iframe', async () => {
+    const event = createEvent({
+      referer: 'https://vpn.example.test/admin/metrics',
+      'sec-fetch-dest': 'iframe',
+    });
+    h3Mocks.getRequestURL.mockReturnValue(
+      new URL('https://vpn.example.test/api/admin/metrics/vmui/')
+    );
+    h3Mocks.proxyRequest.mockResolvedValue(undefined);
+
+    await createHandler(true, '/admin/metrics')(event);
+
+    expect(h3Mocks.proxyRequest).toHaveBeenCalledOnce();
+  });
+
+  test('allows the admin iframe when insecure HTTP omits fetch metadata', async () => {
+    const event = createEvent({
+      referer: 'http://vpn.example.test/admin/metrics',
+    });
+    h3Mocks.getRequestURL.mockReturnValue(
+      new URL('http://vpn.example.test/api/admin/metrics/vmui/')
+    );
+    h3Mocks.proxyRequest.mockResolvedValue(undefined);
+
+    await createHandler(true, '/admin/metrics')(event);
+
+    expect(h3Mocks.proxyRequest).toHaveBeenCalledOnce();
+  });
+
+  test('rejects direct VMUI document navigation', async () => {
+    const event = createEvent({
+      'sec-fetch-dest': 'document',
+    });
+    h3Mocks.getRequestURL.mockReturnValue(
+      new URL('https://vpn.example.test/api/admin/metrics/vmui/')
+    );
+
+    await expect(
+      createHandler(true, '/admin/metrics')(event)
+    ).rejects.toMatchObject({
+      statusCode: 403,
+      statusMessage: 'VMUI is only available in the admin metrics page',
+    });
+    expect(h3Mocks.proxyRequest).not.toHaveBeenCalled();
   });
 
   test('keeps successful VMUI responses embeddable only by the same origin', async () => {
