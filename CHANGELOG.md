@@ -21,6 +21,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Restored VictoriaMetrics scraping and VMUI embedding, stopped fabricating zero dashboard metrics during outages, and restricted Blocky and VictoriaMetrics HTTP access to authenticated admin routes
 - Kept integration feature flags available when the optional GitHub release check is offline, restoring Blocky and VictoriaMetrics admin navigation
+- Kept VMUI redirects and assets behind the authenticated proxy, retried startup races, and made upstream error pages safe to display in the same-origin admin frame
 
 ## [15.5.0] - 2026-10-24
 

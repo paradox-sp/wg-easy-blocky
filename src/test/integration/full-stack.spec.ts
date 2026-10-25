@@ -155,13 +155,23 @@ describe('Full Stack Integration', () => {
     ]);
   }, 70000);
 
-  it('should serve embeddable VMUI through the authenticated proxy', async () => {
+  it('should serve embeddable VMUI and its assets through the authenticated proxy', async () => {
     const response = await authedGet('/api/admin/metrics/vmui/');
     expect(response.ok).toBe(true);
     expect(response.headers.get('content-type')).toContain('text/html');
-    expect(response.headers.get('x-frame-options')).toBeNull();
-    expect(response.headers.get('content-security-policy')).toBeNull();
-    expect(await response.text()).toContain('<html');
+    expect(response.headers.get('x-frame-options')).toBe('SAMEORIGIN');
+    expect(response.headers.get('content-security-policy')).toBe(
+      "frame-ancestors 'self'"
+    );
+
+    const html = await response.text();
+    expect(html).toContain('<html');
+    const asset = html.match(/(?:src|href)="\.\/([^"]+\.(?:css|js))"/)?.[1];
+    expect(asset).toBeDefined();
+
+    const assetResponse = await authedGet(`/api/admin/metrics/vmui/${asset!}`);
+    expect(assetResponse.ok).toBe(true);
+    expect(assetResponse.headers.get('x-frame-options')).toBe('SAMEORIGIN');
   }, 30000);
 
   it('should have Blocky config API working', async () => {
