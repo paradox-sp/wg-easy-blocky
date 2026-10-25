@@ -142,8 +142,8 @@ services:
       VM_DATA_DIR: "${VM_DATA_DIR:-/data/victoriametrics}"
       # Retention period for stored metrics
       VM_RETENTION_PERIOD: "${VM_RETENTION_PERIOD:-30d}"
-      # Loopback-only listener; VMUI and API access stay behind authenticated admin routes
-      VM_HTTP_LISTEN_ADDR: "${VM_HTTP_LISTEN_ADDR:-127.0.0.1:8428}"
+      # In-container listener; port 8428 is not published by this Compose service
+      VM_HTTP_LISTEN_ADDR: "${VM_HTTP_LISTEN_ADDR:-:8428}"
       # Bearer token for scraping wg-easy's /metrics endpoint.
       # MUST match the wg-easy metrics password when one is configured
       # (Settings → Metrics in the UI), otherwise the wg-easy scrape 401s.

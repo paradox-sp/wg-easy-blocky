@@ -89,7 +89,7 @@ services:
       VMUI_URL: "http://127.0.0.1:8428/vmui" # private VMUI upstream, exposed only by the authenticated admin proxy
       VM_DATA_DIR: "/data/victoriametrics" # time-series storage path, persisted via victoriametrics_data volume
       VM_RETENTION_PERIOD: "30d" # how long metrics are kept before VM prunes them
-      VM_HTTP_LISTEN_ADDR: "127.0.0.1:8428" # keep VictoriaMetrics private inside the container
+      VM_HTTP_LISTEN_ADDR: ":8428" # in-container listener; port 8428 is not published above
       VM_METRICS_TOKEN: "" # bearer token for scraping wg-easy /metrics — MUST match wg-easy's metrics password in Settings → Metrics or scrape 401s
 
 networks:
