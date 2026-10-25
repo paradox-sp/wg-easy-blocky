@@ -13,10 +13,10 @@
       "metrics": "Metrics"
     },
     "dashboard": {
-      "connectedPeers": "Connected Peers",
-      "vpnTraffic": "VPN Traffic",
-      "dnsQueries": "DNS Queries",
-      "blockedQueries": "Blocked"
+      "connectedPeers": "Connected / Total Peers",
+      "vpnTraffic": "VPN Download / Upload",
+      "dnsQueries": "DNS Queries/sec",
+      "blockedQueries": "Blocked/sec"
     }
   },
   "user": {

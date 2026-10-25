@@ -1,26 +1,34 @@
 <template>
   <main>
     <div
-      v-if="connectedPeers != null || metricsStore.dashboard"
-      class="mx-3 mb-4 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4"
+      v-if="hasDashboardSummary"
+      class="container mx-auto mb-4 grid max-w-3xl grid-cols-[repeat(auto-fit,minmax(10rem,1fr))] gap-4 px-3"
     >
       <UiStatCard
         v-if="connectedPeers != null"
         :title="$t('pages.dashboard.connectedPeers')"
-        :value="String(connectedPeers)"
+        :value="`${connectedPeers} / ${totalPeers}`"
       />
       <UiStatCard
-        v-if="metricsStore.dashboard?.vpnTraffic"
+        v-if="canViewMetrics && metricsStore.dashboard.vpnTraffic"
         :title="$t('pages.dashboard.vpnTraffic')"
-        :value="`${formatBytes(metricsStore.dashboard.vpnTraffic.rx)} / ${formatBytes(metricsStore.dashboard.vpnTraffic.tx)}`"
+        :value="`↓ ${formatRate(metricsStore.dashboard.vpnTraffic.rx)} · ↑ ${formatRate(metricsStore.dashboard.vpnTraffic.tx)}`"
       />
       <UiStatCard
-        v-if="globalStore.blockyEnabled && metricsStore.dashboard?.dnsStats"
+        v-if="
+          canViewMetrics &&
+          globalStore.blockyEnabled &&
+          metricsStore.dashboard.dnsStats
+        "
         :title="$t('pages.dashboard.dnsQueries')"
         :value="`${(metricsStore.dashboard.dnsStats.queriesPerSec ?? 0).toFixed(1)} /s`"
       />
       <UiStatCard
-        v-if="globalStore.blockyEnabled && metricsStore.dashboard?.dnsStats"
+        v-if="
+          canViewMetrics &&
+          globalStore.blockyEnabled &&
+          metricsStore.dashboard.dnsStats
+        "
         :title="$t('pages.dashboard.blockedQueries')"
         :value="`${(metricsStore.dashboard.dnsStats.blockedPerSec ?? 0).toFixed(1)} /s`"
         color="red"
@@ -32,9 +40,9 @@
         <PanelHeadTitle>
           {{ $t('pages.clients') }}
         </PanelHeadTitle>
-        <PanelHeadBoat>
-          <ClientsSearch />
-          <div class="flex gap-2">
+        <PanelHeadBoat class="w-full sm:w-auto">
+          <ClientsSearch class="w-full sm:w-auto" />
+          <div class="flex w-full justify-end gap-2 sm:w-auto">
             <ClientsSort />
             <ClientsNew />
           </div>
@@ -61,6 +69,7 @@
 
 <script setup lang="ts">
 const globalStore = useGlobalStore();
+const authStore = useAuthStore();
 const clientsStore = useClientsStore();
 const metricsStore = useMetricsStore();
 const configuredDashboardPollIntervalMs = Number(
@@ -71,6 +80,14 @@ const dashboardPollIntervalMs =
   configuredDashboardPollIntervalMs >= 1_000
     ? configuredDashboardPollIntervalMs
     : 10_000;
+const canViewMetrics = computed(() => {
+  const user = authStore.userData;
+  return (
+    globalStore.victoriaMetricsEnabled &&
+    user !== null &&
+    hasPermissions(user, 'admin', 'any')
+  );
+});
 
 // TODO?: use hover card to show more detailed info without leaving the page
 // or do something like a accordion
@@ -88,7 +105,7 @@ const { pause: pausePolling, resume: resumePolling } = useTimeoutPoll(
       console.error(error);
     }
 
-    metricsStore.fetchDashboard().catch(console.error);
+    await refreshMetrics();
   },
   dashboardPollIntervalMs,
   { immediate: false }
@@ -104,7 +121,7 @@ function handleVisibilityChange() {
         updateCharts: globalStore.uiShowCharts,
       })
       .catch(console.error);
-    metricsStore.fetchDashboard().catch(console.error);
+    refreshMetrics().catch(console.error);
     resumePolling();
   }
 }
@@ -112,6 +129,7 @@ function handleVisibilityChange() {
 onMounted(() => {
   pageMounted = true;
   document.addEventListener('visibilitychange', handleVisibilityChange);
+  refreshMetrics().catch(console.error);
 
   void initialRefresh.catch(console.error).finally(() => {
     if (pageMounted) {
@@ -129,6 +147,20 @@ const connectedPeers = computed(() => {
   if (!clientsStore.clients) return null;
   return clientsStore.clients.filter((c) => c.latestHandshakeAt != null).length;
 });
+const totalPeers = computed(() => clientsStore.clients?.length ?? 0);
+const hasDashboardSummary = computed(
+  () =>
+    connectedPeers.value !== null ||
+    (canViewMetrics.value &&
+      (metricsStore.dashboard.vpnTraffic !== null ||
+        (globalStore.blockyEnabled &&
+          metricsStore.dashboard.dnsStats !== null)))
+);
+
+function refreshMetrics() {
+  if (!canViewMetrics.value) return Promise.resolve();
+  return metricsStore.fetchDashboard();
+}
 
 function formatBytes(bytes?: number | null): string {
   if (bytes == null) return '0 B';
@@ -137,5 +169,9 @@ function formatBytes(bytes?: number | null): string {
   const i = Math.floor(Math.log(bytes) / Math.log(1024));
   const value = (bytes / Math.pow(1024, i)).toFixed(1);
   return `${value} ${units[i]}`;
+}
+
+function formatRate(bytes?: number | null): string {
+  return `${formatBytes(bytes)}/s`;
 }
 </script>
