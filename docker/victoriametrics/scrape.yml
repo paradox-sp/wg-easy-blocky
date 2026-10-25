@@ -11,7 +11,7 @@ scrape_configs:
   # wg-easy metrics
   # The /metrics endpoint enforces Bearer auth when a metrics password is set.
   # VM_METRICS_TOKEN must equal the wg-easy metrics password when one is configured
-  # (VictoriaMetrics substitutes ${ENV_VAR} placeholders from its environment).
+  # (VictoriaMetrics substitutes %{ENV_VAR} placeholders from its environment).
   - job_name: "wg-easy"
     static_configs:
       - targets: ["localhost:51821"]

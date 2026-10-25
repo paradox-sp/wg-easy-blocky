@@ -1,4 +1,9 @@
 #!/command/with-contenv sh
+# VictoriaMetrics treats a missing %{VAR} as a fatal scrape-config error.
+# s6 may omit empty container variables, so export the optional token explicitly.
+export VM_METRICS_TOKEN="${VM_METRICS_TOKEN:-}"
+export VM_SCRAPE_INTERVAL="${VM_SCRAPE_INTERVAL:-30s}"
+
 exec victoria-metrics \
     -httpListenAddr=${VM_HTTP_LISTEN_ADDR:-:8428} \
     -retentionPeriod=${VM_RETENTION_PERIOD:-30d} \
