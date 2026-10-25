@@ -121,9 +121,48 @@
 <script setup lang="ts">
 const { t } = useI18n();
 const store = useMetricsStore();
+const configuredDashboardPollIntervalMs = Number(
+  useRuntimeConfig().public.dashboardPollIntervalMs
+);
+const dashboardPollIntervalMs =
+  Number.isSafeInteger(configuredDashboardPollIntervalMs) &&
+  configuredDashboardPollIntervalMs >= 1_000
+    ? configuredDashboardPollIntervalMs
+    : 10_000;
+let pageMounted = false;
 
-onMounted(async () => {
-  await store.fetchDashboard();
+const { pause: pausePolling, resume: resumePolling } = useTimeoutPoll(
+  () => store.fetchDashboard(),
+  dashboardPollIntervalMs,
+  { immediate: false }
+);
+
+function handleVisibilityChange() {
+  if (document.hidden) {
+    pausePolling();
+  } else {
+    store.fetchDashboard().catch(console.error);
+    resumePolling();
+  }
+}
+
+onMounted(() => {
+  pageMounted = true;
+  document.addEventListener('visibilitychange', handleVisibilityChange);
+
+  void store
+    .fetchDashboard()
+    .catch(console.error)
+    .finally(() => {
+      if (pageMounted && !document.hidden) {
+        resumePolling();
+      }
+    });
+});
+
+onUnmounted(() => {
+  pageMounted = false;
+  document.removeEventListener('visibilitychange', handleVisibilityChange);
 });
 
 function formatBytes(bytes?: number | null): string {
