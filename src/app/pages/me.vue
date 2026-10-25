@@ -181,6 +181,8 @@
 <script setup lang="ts">
 import { encodeQR } from 'qr';
 
+import { $fetch } from '#imports';
+
 const authStore = useAuthStore();
 
 type TotpResponse =

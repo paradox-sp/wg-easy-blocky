@@ -22,6 +22,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Restored VictoriaMetrics scraping and VMUI embedding, stopped fabricating zero dashboard metrics during outages, and restricted Blocky and VictoriaMetrics HTTP access to authenticated admin routes
 - Kept integration feature flags available when the optional GitHub release check is offline, restoring Blocky and VictoriaMetrics admin navigation
 
+## [15.5.0] - 2026-10-24
+
+### Added
+
+- Add trusted proxies (https://github.com/wg-easy/wg-easy/pull/2751)
+- AmneziaWG 3.1 support (https://github.com/wg-easy/wg-easy/pull/2804)
+- Make WireGuard interface name configurable (https://github.com/wg-easy/wg-easy/pull/2826)
+
 ## [15.4.0] - 2026-08-14
 
 ### Added

@@ -11,7 +11,7 @@ vi.mock('ofetch', () => ({
 }));
 
 vi.mock('#server/utils/config', () => ({
-  RELEASE: 'v15.4.0',
+  RELEASE: 'v15.5.0',
   SERVER_DEBUG: debugMock,
   WG_ENV: mockWgEnv,
 }));
@@ -26,11 +26,11 @@ describe('release lookup', () => {
   test('returns and caches the current release when GitHub is unavailable', async () => {
     fetchMock.mockRejectedValue(new TypeError('network unavailable'));
     await expect(cachedFetchLatestRelease()).resolves.toEqual({
-      version: 'v15.4.0',
+      version: 'v15.5.0',
       changelog: '',
     });
     await expect(cachedFetchLatestRelease()).resolves.toEqual({
-      version: 'v15.4.0',
+      version: 'v15.5.0',
       changelog: '',
     });
 
