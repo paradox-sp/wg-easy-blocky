@@ -1,4 +1,3 @@
-import { createError } from 'h3';
 import { $fetch } from 'ofetch';
 
 import { cacheFunction } from '#server/utils/cache';
@@ -30,12 +29,12 @@ async function fetchLatestRelease() {
       version: response.tag_name,
       changelog,
     };
-  } catch (e) {
-    SERVER_DEBUG('Failed to fetch latest releases: ', e);
-    throw createError({
-      statusCode: 500,
-      statusMessage: 'Failed to fetch latest release',
-    });
+  } catch (error) {
+    SERVER_DEBUG('Failed to fetch latest release:', error);
+    return {
+      version: RELEASE,
+      changelog: '',
+    };
   }
 }
 
