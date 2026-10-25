@@ -1,4 +1,4 @@
-# Blocky Configuration Template (v0.34.0 schema)
+# Blocky Configuration Template (v0.35.0 schema)
 # This file is copied to /etc/blocky/config.yml on container start.
 # The wg-easy server rewrites this file from the DB config and restarts the
 # Blocky s6 service whenever the config is saved in the UI.
@@ -59,11 +59,9 @@ prometheus:
   enable: true
   path: /metrics
 
-# Client name mapping (IP -> name)
+# Client name mapping (IP -> name); managed dynamically by wg-easy.
 clientLookup:
-  clients:
-    # "10.42.42.2": "phone"
-    # "10.42.42.3": "laptop"
+  clients: {}
 
 # Conditional upstream (optional)
 # conditional:

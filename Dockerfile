@@ -56,7 +56,7 @@ RUN apk add --no-cache git make coreutils
 FROM build-go-base AS build-blocky
 
 # renovate: datasource=github-tags depName=0xERR0R/blocky
-ARG BLOCKY_VERSION=v0.34.0
+ARG BLOCKY_VERSION=v0.35.0
 
 # coreutils provides GNU date (busybox date lacks --iso-8601, which Blocky's
 # Makefile uses for BUILD_TIME). GO_SKIP_GENERATE skips mockery/go generate

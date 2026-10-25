@@ -14,7 +14,7 @@ on:
         description: 'Blocky version to build (Dockerfile ARG BLOCKY_VERSION)'
         required: false
         type: string
-        default: 'v0.34.0'
+        default: 'v0.35.0'
       vm_version:
         description: 'VictoriaMetrics version to build (Dockerfile ARG VM_VERSION)'
         required: false
@@ -118,7 +118,7 @@ jobs:
           context: .
           platforms: ${{ matrix.platform }}
           build-args: |
-            BLOCKY_VERSION=${{ inputs.blocky_version || 'v0.34.0' }}
+            BLOCKY_VERSION=${{ inputs.blocky_version || 'v0.35.0' }}
             VM_VERSION=${{ inputs.vm_version || 'v1.113.0' }}
           tags: ${{ steps.meta.outputs.tags }}
           push: true

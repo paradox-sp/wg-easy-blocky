@@ -16,6 +16,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Reorganized the admin navigation and improved the sign-in form hierarchy and accessibility
 - Reused unchanged Blocky DNS log parses, evicted idle history caches, reduced filtered-history allocations, and made dashboard and VictoriaMetrics scrape intervals low-spec friendly
 - Reduced duplicate Blocky configuration reads, VictoriaMetrics dashboard queries, and concurrent DNS history log parsing; bounded optional service health requests
+- Updated the bundled Blocky DNS service from v0.34.0 to v0.35.0
 
 ### Fixed
 
